@@ -1,0 +1,3 @@
+/Users/simonezacchetti/CLionProjects/API23/cmake-build-debug/CMakeFiles/API23.dir
+/Users/simonezacchetti/CLionProjects/API23/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/simonezacchetti/CLionProjects/API23/cmake-build-debug/CMakeFiles/rebuild_cache.dir
