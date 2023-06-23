@@ -22,6 +22,7 @@ typedef struct TreeNode {
     struct TreeNode* right;
 } TreeNode;
 
+
 //*** FUNZIONI PER GESTIONE LISTA ***//
 
 void inserisciInOrdineDecrescente(Node** testa, int valore) {
@@ -79,6 +80,7 @@ void cancella(Node** testa, int valore) {
 
 
 //*** FUNZIONI PER GESTIONE ALBERO ***//
+
 TreeNode* createNode(Stazione stazione) {
     TreeNode* newNode = (TreeNode*)malloc(sizeof(TreeNode));
     newNode->stazione = stazione;
@@ -157,18 +159,31 @@ TreeNode* searchNode(TreeNode* root, int distanza) {
 }
 
 void inorderTraversal(TreeNode* root) {
-    if (root != NULL) {
-        inorderTraversal(root->left);
-        printf("Numero stazione: %d\n", root->stazione.distanza);
-        for(int i=0; i<MAX_AUTO; i++) {
-            if (root->stazione.autonomie_auto[i] != -1) {
-                printf("Auto %d: %d\n", i, root->stazione.autonomie_auto[i]);
-            }
-        }
-        printf("max: %d\n", root->stazione.auto_max);
-        inorderTraversal(root->right);
+    if (root == NULL) {
+        return;
     }
+
+    inorderTraversal(root->left);
+    printf("Numero stazione: %d\n", root->stazione.distanza);
+    for (int i = 0; i < MAX_AUTO; i++) {
+        if (root->stazione.autonomie_auto[i] != -1) {
+            printf("Auto %d: %d\n", i, root->stazione.autonomie_auto[i]);
+        }
+    }
+    printf("max: %d\n", root->stazione.auto_max);
+
+    Node* current = root->stazione.stazioni_adiacenti;
+    printf("Stazioni adiacenti: ");
+    while (current != NULL) {
+        printf("%d ", current->valore);
+        current = current->next;
+    }
+    printf("\n");
+
+    inorderTraversal(root->right);
 }
+
+
 
 void freeTree(TreeNode* root) {
     if (root != NULL) {
@@ -178,11 +193,49 @@ void freeTree(TreeNode* root) {
     }
 }
 
+//*** FUNZIONI GESTIONE LISTE DI ADIACENZA ***//
+void cercaAdiacenti(TreeNode* root) {
+    if (root != NULL) {
+        cercaAdiacenti(root->left);
+
+        TreeNode* current = root->right;
+        while (current != NULL) {
+            printf("controllo\n");
+            if (abs(root->stazione.distanza - current->stazione.distanza) < root->stazione.auto_max) {
+                inserisciInOrdineDecrescente(&(root->stazione.stazioni_adiacenti), current->stazione.distanza);
+                inserisciInOrdineDecrescente(&(current->stazione.stazioni_adiacenti), root->stazione.distanza);
+            }
+            current = current->right;
+        }
+
+        cercaAdiacenti(root->right);
+    }
+}
+
+void cercaNuoveAdiacenti(TreeNode* root, TreeNode* stazione) {
+    if (root != NULL) {
+        cercaNuoveAdiacenti(root->left, stazione);
+
+        if (abs(stazione->stazione.distanza - root->stazione.distanza) < stazione->stazione.auto_max) {
+            inserisciInOrdineDecrescente(&(stazione->stazione.stazioni_adiacenti), root->stazione.distanza);
+            inserisciInOrdineDecrescente(&(root->stazione.stazioni_adiacenti), stazione->stazione.distanza);
+        }
+
+        cercaNuoveAdiacenti(root->right, stazione);
+    }
+}
+
+
+
 //*** FUNZIONI PER GESTIONE COMANDI RICEVUTI DA INPUT ***//
 void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autonomie[]) {
     Stazione stazione;
     stazione.distanza = distanza;
     stazione.auto_max = 0;
+
+    // Inizializza la lista stazioni_adiacenti a NULL
+    stazione.stazioni_adiacenti = NULL;
+
     for (int i = 0; i < MAX_AUTO; i++) {
         if (i < numero_auto) {
             stazione.autonomie_auto[i] = autonomie[i];
@@ -195,7 +248,9 @@ void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autono
     }
 
     *root = insertNode(*root, stazione);
+    cercaAdiacenti(*root);
 }
+
 
 void comandoAggiungiStazione(TreeNode** root, char* restoStringa) {
     // Implementazione per l'aggiunta della stazione
@@ -236,28 +291,32 @@ void comandoAggiungiStazione(TreeNode** root, char* restoStringa) {
     }
 }
 
-void aggiungiAuto(TreeNode* stazione, int autonomia) {
+int aggiungiAuto(TreeNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
 
-    int i;
+    int i, cambiata_auto_max = 0;  // Inizializzazione corretta di cambiata_auto_max
+
     for (i = 0; i < MAX_AUTO; i++) {
         if (staz->autonomie_auto[i] == -1) {
             staz->autonomie_auto[i] = autonomia;
             if (autonomia > staz->auto_max) {
                 staz->auto_max = autonomia;
+                cambiata_auto_max = 1;
             }
             printf("aggiunta\n");
-            break;
+            return cambiata_auto_max;
         }
     }
 
     if (i == MAX_AUTO) {
-        printf("Errore: il numero massimo di auto per stazione è stato raggiunto.\n");
+        printf("non aggiunta\n");
     }
+    return 0;  // arriva qui se la stazione è piena di auto
 }
 
+
 // TODO cosi viene tolta solo la prima auto trovata con tale autonomia
-void demolisciAuto(TreeNode* stazione, int autonomia) {
+void rottamaAuto(TreeNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
 
     int i;
@@ -272,7 +331,7 @@ void demolisciAuto(TreeNode* stazione, int autonomia) {
                     }
                 }
             }
-            printf("demolita\n");
+            printf("rottamata\n");
             break;
         }
     }
@@ -325,7 +384,10 @@ int main() {
                         token = strtok(NULL, "");
                         if (token != NULL) {
                             int autonomia = atoi(token);
-                            aggiungiAuto(stazione, autonomia);
+                            int cambiata_auto_max = aggiungiAuto(stazione, autonomia);
+                            if (cambiata_auto_max){
+                                cercaNuoveAdiacenti(root, stazione);   // ricerca le stazioni adiacenti anche dopo l'aggiunta di un'auto
+                            }
                         }
                     } else {
                         printf("non aggiunta\n");
@@ -340,7 +402,7 @@ int main() {
                         token = strtok(NULL, "");
                         if (token != NULL) {
                             int autonomia = atoi(token);
-                            demolisciAuto(stazione, autonomia);
+                            rottamaAuto(stazione, autonomia);
                         }
                     } else {
                         printf("non rottamata\n");
