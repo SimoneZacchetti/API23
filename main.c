@@ -34,7 +34,11 @@ void inserisciInOrdineDecrescente(Node** testa, int valore) {
         // La lista è vuota, il nuovo Node diventa la testa
         *testa = nuovoNodo;
     } else {
-        if (valore >= (*testa)->valore) {
+        if (valore == (*testa)->valore) {
+            // Il valore è già presente, non inserisco
+            free(nuovoNodo);
+            return;
+        } else if (valore > (*testa)->valore) {
             // Inserimento in testa
             nuovoNodo->next = *testa;
             *testa = nuovoNodo;
@@ -42,6 +46,11 @@ void inserisciInOrdineDecrescente(Node** testa, int valore) {
             Node* current = *testa;
             while (current->next != NULL && current->next->valore > valore) {
                 current = current->next;
+            }
+            if (current->next->valore == valore) {
+                // Il valore è già presente, non inserisco
+                free(nuovoNodo);
+                return;
             }
             // Inserimento dopo current
             nuovoNodo->next = current->next;
@@ -165,12 +174,6 @@ void inorderTraversal(TreeNode* root) {
 
     inorderTraversal(root->left);
     printf("Numero stazione: %d\n", root->stazione.distanza);
-    for (int i = 0; i < MAX_AUTO; i++) {
-        if (root->stazione.autonomie_auto[i] != -1) {
-            printf("Auto %d: %d\n", i, root->stazione.autonomie_auto[i]);
-        }
-    }
-    printf("max: %d\n", root->stazione.auto_max);
 
     Node* current = root->stazione.stazioni_adiacenti;
     printf("Stazioni adiacenti: ");
@@ -200,7 +203,6 @@ void cercaAdiacenti(TreeNode* root) {
 
         TreeNode* current = root->right;
         while (current != NULL) {
-            printf("controllo\n");
             if (abs(root->stazione.distanza - current->stazione.distanza) < root->stazione.auto_max) {
                 inserisciInOrdineDecrescente(&(root->stazione.stazioni_adiacenti), current->stazione.distanza);
                 inserisciInOrdineDecrescente(&(current->stazione.stazioni_adiacenti), root->stazione.distanza);
@@ -218,6 +220,8 @@ void cercaNuoveAdiacenti(TreeNode* root, TreeNode* stazione) {
 
         if (abs(stazione->stazione.distanza - root->stazione.distanza) < stazione->stazione.auto_max) {
             inserisciInOrdineDecrescente(&(stazione->stazione.stazioni_adiacenti), root->stazione.distanza);
+        }
+        if(abs(stazione->stazione.distanza - root->stazione.distanza) < root->stazione.auto_max) {
             inserisciInOrdineDecrescente(&(root->stazione.stazioni_adiacenti), stazione->stazione.distanza);
         }
 
