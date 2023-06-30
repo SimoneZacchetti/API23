@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #define MAX_AUTO 512
 
@@ -59,7 +60,24 @@ void inserisciInOrdineDecrescente(Node** testa, int valore) {
     }
 }
 
-void cancella(Node** testa, int valore) {
+void aggiungiInCoda(Node** head, int valore) {
+    Node* nuovoNodo = (Node*)malloc(sizeof(Node));
+    nuovoNodo->valore = valore;
+    nuovoNodo->next = NULL;
+
+    if (*head == NULL) {
+        *head = nuovoNodo;
+    } else {
+        Node* current = *head;
+        while (current->next != NULL) {
+            current = current->next;
+        }
+        current->next = nuovoNodo;
+    }
+}
+
+// funzione per cancellare un elemento dalla lista
+void cancellaElementoLista(Node** testa, int valore) {
     if (*testa == NULL) {
         // La lista è vuota
         return;
@@ -86,6 +104,34 @@ void cancella(Node** testa, int valore) {
         free(daCancellare);
     }
 }
+
+// Funzione per eliminare tutti gli elementi della lista
+void eliminaLista(Node** head) {
+    Node* current = *head;
+    Node* next;
+
+    while (current != NULL) {
+        next = current->next;
+        free(current);
+        current = next;
+    }
+
+    *head = NULL;
+}
+
+// Funzione per stampare tutti gli elementi della lista
+void stampaLista(Node* head) {
+    Node* current = head;
+    while (current != NULL) {
+        printf("%d", current->valore);
+        current = current->next;
+        if (current != NULL) {
+            printf(" ");
+        }
+    }
+    printf("\n");
+}
+
 
 
 //*** FUNZIONI PER GESTIONE ALBERO ***//
@@ -137,11 +183,13 @@ TreeNode* deleteNode(TreeNode* root, int distanza) {
     } else {
         if (root->left == NULL) {
             TreeNode* temp = root->right;
+            //cancellaElementoLista(&root->stazione.stazioni_adiacenti, distanza);
             free(root);
             printf("demolita\n");
             return temp;
         } else if (root->right == NULL) {
             TreeNode* temp = root->left;
+            //cancellaElementoLista(&root->stazione.stazioni_adiacenti, distanza);
             free(root);
             printf("demolita\n");
             return temp;
@@ -154,6 +202,7 @@ TreeNode* deleteNode(TreeNode* root, int distanza) {
 
     return root;
 }
+
 
 TreeNode* searchNode(TreeNode* root, int distanza) {
     if (root == NULL || root->stazione.distanza == distanza) {
@@ -173,16 +222,7 @@ void inorderTraversal(TreeNode* root) {
     }
 
     inorderTraversal(root->left);
-    printf("Numero stazione: %d\n", root->stazione.distanza);
-
-    Node* current = root->stazione.stazioni_adiacenti;
-    printf("Stazioni adiacenti: ");
-    while (current != NULL) {
-        printf("%d ", current->valore);
-        current = current->next;
-    }
-    printf("\n");
-
+    printf("%d ", root->stazione.distanza);
     inorderTraversal(root->right);
 }
 
@@ -218,10 +258,10 @@ void cercaNuoveAdiacenti(TreeNode* root, TreeNode* stazione) {
     if (root != NULL) {
         cercaNuoveAdiacenti(root->left, stazione);
 
-        if (abs(stazione->stazione.distanza - root->stazione.distanza) < stazione->stazione.auto_max) {
+        if (abs(stazione->stazione.distanza - root->stazione.distanza) <= stazione->stazione.auto_max) {
             inserisciInOrdineDecrescente(&(stazione->stazione.stazioni_adiacenti), root->stazione.distanza);
         }
-        if(abs(stazione->stazione.distanza - root->stazione.distanza) < root->stazione.auto_max) {
+        if(abs(stazione->stazione.distanza - root->stazione.distanza) <= root->stazione.auto_max) {
             inserisciInOrdineDecrescente(&(root->stazione.stazioni_adiacenti), stazione->stazione.distanza);
         }
 
@@ -252,7 +292,7 @@ void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autono
     }
 
     *root = insertNode(*root, stazione);
-    cercaAdiacenti(*root);
+//    cercaAdiacenti(*root);
 }
 
 
@@ -295,33 +335,30 @@ void comandoAggiungiStazione(TreeNode** root, char* restoStringa) {
     }
 }
 
-int aggiungiAuto(TreeNode* stazione, int autonomia) {
+void aggiungiAuto(TreeNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
 
-    int i, cambiata_auto_max = 0;  // Inizializzazione corretta di cambiata_auto_max
+    int i;
 
     for (i = 0; i < MAX_AUTO; i++) {
         if (staz->autonomie_auto[i] == -1) {
             staz->autonomie_auto[i] = autonomia;
             if (autonomia > staz->auto_max) {
                 staz->auto_max = autonomia;
-                cambiata_auto_max = 1;
             }
             printf("aggiunta\n");
-            return cambiata_auto_max;
+            break;
         }
     }
 
     if (i == MAX_AUTO) {
         printf("non aggiunta\n");
     }
-    return 0;  // arriva qui se la stazione è piena di auto
 }
 
-
-// TODO cosi viene tolta solo la prima auto trovata con tale autonomia
 void rottamaAuto(TreeNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
+//    int cambiata_auto_max = 0;
 
     int i;
     for (i = 0; i < MAX_AUTO; i++) {
@@ -334,6 +371,7 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
                         staz->auto_max = staz->autonomie_auto[j];
                     }
                 }
+//                cambiata_auto_max = 1;
             }
             printf("rottamata\n");
             break;
@@ -345,6 +383,86 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
     }
 }
 
+// Funzione ricorsiva per trovare il valore più distante dal nodo (in avanti)
+TreeNode* findMax(struct TreeNode* node, int x, int y) {
+    if (node == NULL)
+        return NULL; // Ritorna NULL se l'intero k non viene trovato
+    int sum = x + y;
+    if (node->stazione.distanza <= sum) {
+        if (node->right != NULL && node->right->stazione.distanza <= sum)
+            return findMax(node->right, x, y);
+        else
+            return node; // Ritorna il puntatore all'intero k
+    } else {
+        return findMax(node->left, x, y);
+    }
+}
+
+// Funzione ricorsiva per trovare il valore più distante dal nodo (all'indietro)
+TreeNode* findMaxBackward(struct TreeNode* node, int x, int y) {
+    if (node == NULL)
+        return NULL; // Valore sentinella per indicare la mancata trovata di k
+    int diff = x - y;
+    if (node->stazione.distanza >= diff) {
+        // Se il nodo corrente è maggiore o uguale a x-y, controlliamo i suoi figli sinistri
+        // per verificare se ci sono altri numeri compresi tra k e x-y
+        if (node->left != NULL && node->left->stazione.distanza >= diff)
+            return findMaxBackward(node->left, x, y);
+        else
+            return node;
+    } else {
+        // Il nodo corrente è minore di x-y, quindi controlliamo solo il suo figlio destro
+        return findMaxBackward(node->right, x, y);
+    }
+}
+
+void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
+    if (partenza->stazione.distanza == arrivo->stazione.distanza) {
+        printf("%d\n", partenza->stazione.distanza);
+        return;
+    }
+
+    TreeNode *curr = partenza;
+    Node *tappe = NULL;
+    aggiungiInCoda(&tappe, partenza->stazione.distanza);
+    if (partenza->stazione.distanza < arrivo->stazione.distanza) {
+        while (curr->stazione.distanza < arrivo->stazione.distanza){
+            TreeNode *max = findMax(root, curr->stazione.distanza, curr->stazione.auto_max);
+            if (max->stazione.distanza == curr->stazione.distanza) {
+                printf("nessun percorso\n");
+                eliminaLista(&tappe);
+                return;
+            }
+            curr = max;
+            if (curr->stazione.distanza > arrivo->stazione.distanza) {
+                printf("metto arrivo invece del prossimo\n");
+                aggiungiInCoda(&tappe, arrivo->stazione.distanza);
+            } else {
+                aggiungiInCoda(&tappe, max->stazione.distanza);
+            }
+        }
+    } else {
+        while (curr->stazione.distanza > arrivo->stazione.distanza){
+            TreeNode *max = findMaxBackward(root, curr->stazione.distanza, curr->stazione.auto_max);
+            if (max->stazione.distanza == curr->stazione.distanza) {
+                printf("nessun percorso\n");
+                eliminaLista(&tappe);
+                return;
+            }
+            curr = max;
+            if (curr->stazione.distanza < arrivo->stazione.distanza) {
+                printf("metto arrivo invece del prossimo\n");
+                aggiungiInCoda(&tappe, arrivo->stazione.distanza);
+            } else {
+                aggiungiInCoda(&tappe, max->stazione.distanza);
+            }
+        }
+    }
+
+    stampaLista(tappe);
+    eliminaLista(&tappe);
+}
+
 int main() {
     TreeNode* root = NULL;
 
@@ -352,9 +470,7 @@ int main() {
     size_t buffer_size = 0;
     ssize_t input_length;
 
-    while (1) {
-        printf("Inserisci il comando: ");
-        input_length = getline(&comando, &buffer_size, stdin);
+    while ((input_length = getline(&comando, &buffer_size, stdin)) != -1) {
 
         if (input_length == -1) {
             // Errore di input
@@ -388,10 +504,10 @@ int main() {
                         token = strtok(NULL, "");
                         if (token != NULL) {
                             int autonomia = atoi(token);
-                            int cambiata_auto_max = aggiungiAuto(stazione, autonomia);
-                            if (cambiata_auto_max){
-                                cercaNuoveAdiacenti(root, stazione);   // ricerca le stazioni adiacenti anche dopo l'aggiunta di un'auto
-                            }
+                            aggiungiAuto(stazione, autonomia);
+//                            if (cambiata_auto_max){
+//                                cercaNuoveAdiacenti(root, stazione);   // ricerca le stazioni adiacenti anche dopo l'aggiunta di un'auto
+//                            }
                         }
                     } else {
                         printf("non aggiunta\n");
@@ -406,20 +522,39 @@ int main() {
                         token = strtok(NULL, "");
                         if (token != NULL) {
                             int autonomia = atoi(token);
+
                             rottamaAuto(stazione, autonomia);
+//                            if (cambiata_auto_max){
+//                                cercaNuoveAdiacenti(root, stazione);   // ricerca le stazioni adiacenti anche dopo l'aggiunta di un'auto
+//                            }
                         }
                     } else {
                         printf("non rottamata\n");
                     }
                 }
             } else if (strcmp(token, "pianifica-percorso") == 0){
-
+                token = strtok(NULL, " ");
+                if (token != NULL) {
+                    int partenza = atoi(token);
+                    token = strtok(NULL, "");
+                    if (token != NULL) {
+                        int arrivo = atoi(token);
+                        //findMinPath(root, partenza, arrivo);
+                        if (partenza == arrivo) {
+                            printf("%d\n", partenza);
+                            continue;
+                        }
+                        TreeNode* nodoPartenza = searchNode(root, partenza);
+                        TreeNode* nodoArrivo = searchNode(root, arrivo);
+                        cercaPercorsoMinimo(root, nodoPartenza, nodoArrivo);
+                    }
+                }
             }
             else {
                 printf("Comando non valido.\n");
             }
         }
-        inorderTraversal(root);
+//        inorderTraversal(root);
     }
 
     // Liberazione della memoria occupata dall'albero
@@ -430,3 +565,9 @@ int main() {
 
     return 0;
 }
+
+// NOTE
+// quando demolisco una stazione per ora non viene tolta dalla lista di adiacenza delle altre stazioni
+// TODO togliere lista di adiacenza
+// TODO controllare il caso di percorso al contrario (test3)
+// TODO fare disambiguazione tra percorsi con uguale numero di stazioni
