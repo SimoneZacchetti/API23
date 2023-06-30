@@ -384,35 +384,52 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
 }
 
 // Funzione ricorsiva per trovare il valore più distante dal nodo (in avanti)
-TreeNode* findMax(struct TreeNode* node, int x, int y) {
+// TODO potrei doverla modificare come con la findFurthestBackward, aggiungendo findMaxDistance
+TreeNode* findFurthest(struct TreeNode* node, int x, int y) {
     if (node == NULL)
         return NULL; // Ritorna NULL se l'intero k non viene trovato
     int sum = x + y;
     if (node->stazione.distanza <= sum) {
         if (node->right != NULL && node->right->stazione.distanza <= sum)
-            return findMax(node->right, x, y);
+            return findFurthest(node->right, x, y);
         else
             return node; // Ritorna il puntatore all'intero k
     } else {
-        return findMax(node->left, x, y);
+        return findFurthest(node->left, x, y);
     }
 }
 
-// Funzione ricorsiva per trovare il valore più distante dal nodo (all'indietro)
-TreeNode* findMaxBackward(struct TreeNode* node, int x, int y) {
+int findMaxDistance(struct TreeNode* node) {
     if (node == NULL)
-        return NULL; // Valore sentinella per indicare la mancata trovata di k
-    int diff = x - y;
+        return INT_MIN;
+
+    int leftMax = findMaxDistance(node->left);
+    int rightMax = findMaxDistance(node->right);
+
+    int maxDistance = (leftMax > rightMax) ? leftMax : rightMax;
+    if (node->stazione.distanza > maxDistance)
+        maxDistance = node->stazione.distanza;
+
+    return maxDistance;
+}
+
+
+// Funzione ricorsiva per trovare il valore più distante dal nodo (all'indietro)
+struct TreeNode* findFurthestBackward(struct TreeNode* node, int distanza, int autonomia) {
+    if (node == NULL)
+        return NULL;
+
+    int diff = distanza - autonomia;
+
     if (node->stazione.distanza >= diff) {
-        // Se il nodo corrente è maggiore o uguale a x-y, controlliamo i suoi figli sinistri
-        // per verificare se ci sono altri numeri compresi tra k e x-y
-        if (node->left != NULL && node->left->stazione.distanza >= diff)
-            return findMaxBackward(node->left, x, y);
-        else
-            return node;
+        if (node->left != NULL) {
+            int maxDistance = findMaxDistance(node->left); // Funzione ausiliaria per trovare la distanza massima nel sottoalbero sinistro
+            if (maxDistance >= diff)
+                return findFurthestBackward(node->left, distanza, autonomia);
+        }
+        return node;
     } else {
-        // Il nodo corrente è minore di x-y, quindi controlliamo solo il suo figlio destro
-        return findMaxBackward(node->right, x, y);
+        return findFurthestBackward(node->right, distanza, autonomia);
     }
 }
 
@@ -427,7 +444,7 @@ void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
     aggiungiInCoda(&tappe, partenza->stazione.distanza);
     if (partenza->stazione.distanza < arrivo->stazione.distanza) {
         while (curr->stazione.distanza < arrivo->stazione.distanza){
-            TreeNode *max = findMax(root, curr->stazione.distanza, curr->stazione.auto_max);
+            TreeNode *max = findFurthest(root, curr->stazione.distanza, curr->stazione.auto_max);
             if (max->stazione.distanza == curr->stazione.distanza) {
                 printf("nessun percorso\n");
                 eliminaLista(&tappe);
@@ -442,8 +459,9 @@ void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
             }
         }
     } else {
+        // caso in cui la partenza è più avanti dell'arrivo
         while (curr->stazione.distanza > arrivo->stazione.distanza){
-            TreeNode *max = findMaxBackward(root, curr->stazione.distanza, curr->stazione.auto_max);
+            TreeNode *max = findFurthestBackward(root, curr->stazione.distanza, curr->stazione.auto_max);
             if (max->stazione.distanza == curr->stazione.distanza) {
                 printf("nessun percorso\n");
                 eliminaLista(&tappe);
@@ -451,7 +469,6 @@ void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
             }
             curr = max;
             if (curr->stazione.distanza < arrivo->stazione.distanza) {
-                printf("metto arrivo invece del prossimo\n");
                 aggiungiInCoda(&tappe, arrivo->stazione.distanza);
             } else {
                 aggiungiInCoda(&tappe, max->stazione.distanza);
