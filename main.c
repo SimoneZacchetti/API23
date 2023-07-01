@@ -14,7 +14,7 @@ typedef struct {
     int distanza;
     int auto_max;
     int autonomie_auto[MAX_AUTO];
-    Node* stazioni_adiacenti;
+//    Node* stazioni_adiacenti;
 } Stazione;
 
 typedef struct TreeNode {
@@ -237,6 +237,7 @@ void freeTree(TreeNode* root) {
 }
 
 //*** FUNZIONI GESTIONE LISTE DI ADIACENZA ***//
+/*
 void cercaAdiacenti(TreeNode* root) {
     if (root != NULL) {
         cercaAdiacenti(root->left);
@@ -254,6 +255,7 @@ void cercaAdiacenti(TreeNode* root) {
     }
 }
 
+
 void cercaNuoveAdiacenti(TreeNode* root, TreeNode* stazione) {
     if (root != NULL) {
         cercaNuoveAdiacenti(root->left, stazione);
@@ -268,7 +270,7 @@ void cercaNuoveAdiacenti(TreeNode* root, TreeNode* stazione) {
         cercaNuoveAdiacenti(root->right, stazione);
     }
 }
-
+*/
 
 
 //*** FUNZIONI PER GESTIONE COMANDI RICEVUTI DA INPUT ***//
@@ -278,7 +280,7 @@ void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autono
     stazione.auto_max = 0;
 
     // Inizializza la lista stazioni_adiacenti a NULL
-    stazione.stazioni_adiacenti = NULL;
+    // stazione.stazioni_adiacenti = NULL;
 
     for (int i = 0; i < MAX_AUTO; i++) {
         if (i < numero_auto) {
@@ -383,22 +385,6 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
     }
 }
 
-// Funzione ricorsiva per trovare il valore più distante dal nodo (in avanti)
-// TODO potrei doverla modificare come con la findFurthestBackward, aggiungendo findMaxDistance
-TreeNode* findFurthest(struct TreeNode* node, int x, int y) {
-    if (node == NULL)
-        return NULL; // Ritorna NULL se l'intero k non viene trovato
-    int sum = x + y;
-    if (node->stazione.distanza <= sum) {
-        if (node->right != NULL && node->right->stazione.distanza <= sum)
-            return findFurthest(node->right, x, y);
-        else
-            return node; // Ritorna il puntatore all'intero k
-    } else {
-        return findFurthest(node->left, x, y);
-    }
-}
-
 int findMaxDistance(struct TreeNode* node) {
     if (node == NULL)
         return INT_MIN;
@@ -413,24 +399,56 @@ int findMaxDistance(struct TreeNode* node) {
     return maxDistance;
 }
 
+// Funzione ricorsiva per trovare il valore più distante dal nodo (in avanti)
+TreeNode* findFurthest(struct TreeNode* root, int distanza, int autonomia) {
+    /*
+    if (node == NULL)
+        return NULL; // Ritorna NULL se l'intero k non viene trovato
+    int sum = x + y;
+    if (node->stazione.distanza <= sum) {
+        if (node->right != NULL && node->right->stazione.distanza <= sum)
+            return findFurthest(node->right, x, y);
+        else
+            return node; // Ritorna il puntatore all'intero k
+    } else {
+        return findFurthest(node->left, x, y);
+    }
+    */
+    TreeNode *curr = root;
+    TreeNode *result = NULL;
+    while (curr != NULL) {
+        if (curr->stazione.distanza <= distanza + autonomia) {
+            result = curr;
+            curr = curr->right;
+        } else {
+            curr = curr->left;
+        }
+    }
+    return result;
+}
+
 
 // Funzione ricorsiva per trovare il valore più distante dal nodo (all'indietro)
 struct TreeNode* findFurthestBackward(struct TreeNode* node, int distanza, int autonomia) {
-    if (node == NULL)
-        return NULL;
+    if (node == NULL) return NULL;
 
     int diff = distanza - autonomia;
 
-    if (node->stazione.distanza >= diff) {
-        if (node->left != NULL) {
-            int maxDistance = findMaxDistance(node->left); // Funzione ausiliaria per trovare la distanza massima nel sottoalbero sinistro
-            if (maxDistance >= diff)
-                return findFurthestBackward(node->left, distanza, autonomia);
+    struct TreeNode* curr = node;
+    struct TreeNode* result = NULL;
+
+    while (curr != NULL) {
+        if (curr->stazione.distanza >= diff) {
+            result = curr;
+            curr = curr->left;
+        } else {
+            if (curr->right != NULL && curr->right->stazione.distanza >= diff) {
+                return findFurthestBackward(curr->right, distanza, autonomia);
+            }
+            curr = curr->right;
         }
-        return node;
-    } else {
-        return findFurthestBackward(node->right, distanza, autonomia);
     }
+    return result;
 }
 
 void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
@@ -442,17 +460,18 @@ void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
     TreeNode *curr = partenza;
     Node *tappe = NULL;
     aggiungiInCoda(&tappe, partenza->stazione.distanza);
+    printf("curr: %d, auto_max: %d\n", curr->stazione.distanza, curr->stazione.auto_max);
     if (partenza->stazione.distanza < arrivo->stazione.distanza) {
         while (curr->stazione.distanza < arrivo->stazione.distanza){
             TreeNode *max = findFurthest(root, curr->stazione.distanza, curr->stazione.auto_max);
             if (max->stazione.distanza == curr->stazione.distanza) {
+//                printf("curr: %d, auto_max: %d\n", curr->stazione.distanza, curr->stazione.auto_max);
                 printf("nessun percorso\n");
                 eliminaLista(&tappe);
                 return;
             }
             curr = max;
             if (curr->stazione.distanza > arrivo->stazione.distanza) {
-                printf("metto arrivo invece del prossimo\n");
                 aggiungiInCoda(&tappe, arrivo->stazione.distanza);
             } else {
                 aggiungiInCoda(&tappe, max->stazione.distanza);
@@ -467,6 +486,7 @@ void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
                 eliminaLista(&tappe);
                 return;
             }
+            printf("curr: %d, auto_max: %d\n", curr->stazione.distanza, curr->stazione.auto_max);
             curr = max;
             if (curr->stazione.distanza < arrivo->stazione.distanza) {
                 aggiungiInCoda(&tappe, arrivo->stazione.distanza);
@@ -482,106 +502,66 @@ void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
 
 int main() {
     TreeNode* root = NULL;
+    FILE* file = stdin;
 
-    char* comando = NULL;
-    size_t buffer_size = 0;
-    ssize_t input_length;
+    char comando[20];
+    int distanza, numero_auto, autonomia;
+    int partenza, arrivo;
+    int autonomie[MAX_AUTO];
+//    size_t buffer_size = 0;
+//    ssize_t input_length;
 
-    while ((input_length = getline(&comando, &buffer_size, stdin)) != -1) {
-
-        if (input_length == -1) {
-            // Errore di input
-            printf("Errore durante la lettura dell'input.\n");
-            break;
-        }
-
-        // Rimuovo il carattere di newline alla fine del comando
-        comando[strcspn(comando, "\n")] = '\0';
-
-        char* token = strtok(comando, " ");
-        if (token != NULL) {
-            if (strcmp(token, "aggiungi-stazione") == 0) {
-                // salvo il resto della stringa in token, NULL: leggo dalla stessa stringa di prima, "": non ci sono altri separatori
-                token = strtok(NULL, "");
-                if (token != NULL) {
-                    comandoAggiungiStazione(&root, token);
+    while ((fscanf(file, "%s", comando) != EOF)) {
+        if (strcmp(comando, "aggiungi-stazione") == 0) {
+            if(fscanf (file, "%d %d", &distanza, &numero_auto) != EOF) {
+                for (int i = 0; i < numero_auto; i++) {
+                    if(fscanf(file, "%d", &autonomie [i]) != EOF){}
                 }
-            } else if (strcmp(token, "demolisci-stazione") == 0) {
-                token = strtok(NULL, "");
-                if (token != NULL) {
-                    int distanza = atoi(token);
-                    root = deleteNode(root, distanza);
-                }
-            } else if (strcmp(token, "aggiungi-auto") == 0){
-                token = strtok(NULL, " ");
-                if (token != NULL) {
-                    int distanza = atoi(token);
-                    TreeNode* stazione = searchNode(root, distanza);
-                    if (stazione != NULL) {
-                        token = strtok(NULL, "");
-                        if (token != NULL) {
-                            int autonomia = atoi(token);
-                            aggiungiAuto(stazione, autonomia);
-//                            if (cambiata_auto_max){
-//                                cercaNuoveAdiacenti(root, stazione);   // ricerca le stazioni adiacenti anche dopo l'aggiunta di un'auto
-//                            }
-                        }
-                    } else {
-                        printf("non aggiunta\n");
-                    }
-                }
-            } else if (strcmp(token, "rottama-auto") == 0){
-                token = strtok(NULL, " ");
-                if (token != NULL) {
-                    int distanza = atoi(token);
-                    TreeNode* stazione = searchNode(root, distanza);
-                    if (stazione != NULL) {
-                        token = strtok(NULL, "");
-                        if (token != NULL) {
-                            int autonomia = atoi(token);
-
-                            rottamaAuto(stazione, autonomia);
-//                            if (cambiata_auto_max){
-//                                cercaNuoveAdiacenti(root, stazione);   // ricerca le stazioni adiacenti anche dopo l'aggiunta di un'auto
-//                            }
-                        }
-                    } else {
-                        printf("non rottamata\n");
-                    }
-                }
-            } else if (strcmp(token, "pianifica-percorso") == 0){
-                token = strtok(NULL, " ");
-                if (token != NULL) {
-                    int partenza = atoi(token);
-                    token = strtok(NULL, "");
-                    if (token != NULL) {
-                        int arrivo = atoi(token);
-                        //findMinPath(root, partenza, arrivo);
-                        if (partenza == arrivo) {
-                            printf("%d\n", partenza);
-                            continue;
-                        }
-                        TreeNode* nodoPartenza = searchNode(root, partenza);
-                        TreeNode* nodoArrivo = searchNode(root, arrivo);
-                        cercaPercorsoMinimo(root, nodoPartenza, nodoArrivo);
-                    }
+                aggiungiStazione(&root, distanza, numero_auto, autonomie);
+            }
+        } else if (strcmp(comando, "demolisci-stazione") == 0) {
+            if (fscanf(file, "%d", &distanza) != EOF) {
+                root = deleteNode(root, distanza);
+            }
+        } else if (strcmp(comando, "aggiungi-auto") == 0) {
+            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
+                TreeNode* stazione = searchNode(root, distanza);
+                if (stazione != NULL) {
+                    aggiungiAuto(stazione, autonomia);
+                } else {
+                    printf("non aggiunta\n");
                 }
             }
-            else {
-                printf("Comando non valido.\n");
+        } else if (strcmp(comando, "rottama-auto") == 0) {
+            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
+                TreeNode* stazione = searchNode(root, distanza);
+                if (stazione != NULL) {
+                    rottamaAuto(stazione, autonomia);
+                } else {
+                    printf("non rottamata\n");
+                }
+            }
+        } else if (strcmp(comando, "pianifica-percorso") == 0) {
+            if (fscanf(file, "%d %d", &partenza, &arrivo) != EOF) {
+                if (partenza == arrivo) {
+                    printf("%d\n", partenza);
+                    continue;
+                }
+                TreeNode* nodoPartenza = searchNode(root, partenza);
+                TreeNode* nodoArrivo = searchNode(root, arrivo);
+                cercaPercorsoMinimo(root, nodoPartenza, nodoArrivo);
             }
         }
-//        inorderTraversal(root);
     }
+//        inorderTraversal(root);
+
 
     // Liberazione della memoria occupata dall'albero
     freeTree(root);
 
-    // Liberazione della memoria occupata dal buffer dell'input
-    free(comando);
-
     return 0;
 }
+
 
 // NOTE
 // quando demolisco una stazione per ora non viene tolta dalla lista di adiacenza delle altre stazioni
