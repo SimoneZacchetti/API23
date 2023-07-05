@@ -108,7 +108,11 @@ void appendUniqueNodes(Node** firstList, Node* secondList) {
 void stampaLista(Node* head){
     Node* current = head;
     while (current != NULL) {
-        printf("distanza %d, padre %d\n", current->valore, current->padre->valore ? current->padre->valore : -1);
+        if (current->padre != NULL){
+            printf("distanza %d, padre %d\n", current->valore, current->padre->valore);
+        } else {
+            printf("distanza %d, padre %d\n", current->valore, -1);
+        }
         current = current->next;
         if (current != NULL) {
             printf(" ");
@@ -580,7 +584,7 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
         // nessun percorso trovato
         printf("nessun percorso\n");
         freeList(raggiungibili);
-        freeList(nuoviRaggiungibili);
+        // freeList(nuoviRaggiungibili);
         return;
     }
 
@@ -588,10 +592,15 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
         inserisciInTesta(&percorso, curr->valore);
         curr = curr->padre;
     }
-//    printf("percorso trovato: ");
+
     stampaListaPercorso(percorso);
-    freeList(raggiungibili);
-    freeListPercorso(percorso);
+    if (raggiungibili != NULL) {
+        freeList(raggiungibili);
+    }
+
+    if (percorso != NULL) {
+        freeListPercorso(percorso);
+    }
 }
 
 // funzione che cerca il percorso minimo tra due stazioni in ordine decrescente
@@ -625,7 +634,7 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
         // nessun percorso trovato
         printf("nessun percorso\n");
         freeList(raggiungibili);
-        freeList(nuoviRaggiungibili);
+        // freeList(nuoviRaggiungibili);
         return;
     }
 
@@ -635,8 +644,13 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
     }
     // printf("percorso trovato: ");
     stampaListaPercorso(percorso);
-    freeList(raggiungibili);
-    freeListPercorso(percorso);
+    if (raggiungibili != NULL) {
+        freeList(raggiungibili);
+    }
+
+    if (percorso != NULL) {
+        freeListPercorso(percorso);
+    }
 }
 
 int main() {
