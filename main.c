@@ -68,6 +68,103 @@ void freeList(Node* head) {
     }
 }
 
+void merge(int arr[], int left[], int left_size, int right[], int right_size) {
+    int i = 0, j = 0, k = 0;
+
+    while (i < left_size && j < right_size) {
+        if (left[i] <= right[j]) {
+            arr[k] = left[i];
+            i++;
+        } else {
+            arr[k] = right[j];
+            j++;
+        }
+        k++;
+    }
+
+    while (i < left_size) {
+        arr[k] = left[i];
+        i++;
+        k++;
+    }
+
+    while (j < right_size) {
+        arr[k] = right[j];
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(int arr[], int size) {
+    if (size <= 1) {
+        return;
+    }
+
+    int mid = size / 2;
+    int left[mid];
+    int right[size - mid];
+
+    for (int i = 0; i < mid; i++) {
+        left[i] = arr[i];
+    }
+
+    for (int i = mid; i < size; i++) {
+        right[i - mid] = arr[i];
+    }
+
+    mergeSort(left, mid);
+    mergeSort(right, size - mid);
+
+    merge(arr, left, mid, right, size - mid);
+}
+
+int* sortList(Node* head, int* size) {
+    int count = 0;
+    Node* current = head;
+
+    while (current != NULL) {
+        count++;
+        current = current->next;
+    }
+
+    int* sortedArray = (int*)malloc(count * sizeof(int));
+
+    current = head;
+    int i = 0;
+
+    while (current != NULL) {
+        sortedArray[i] = current->valore;
+        current = current->next;
+        i++;
+    }
+
+    mergeSort(sortedArray, count);
+
+    *size = count;
+    return sortedArray;
+}
+
+int ricercaBinaria(int* array, int lunghezza, int elemento) {
+    int sinistra = 0;
+    int destra = lunghezza - 1;
+
+    while (sinistra <= destra) {
+        int medio = (sinistra + destra) / 2;
+
+        if (array[medio] == elemento) {
+            return medio;  // Trovato l'elemento, restituisce l'indice
+        }
+        else if (array[medio] < elemento) {
+            sinistra = medio + 1;  // L'elemento è nella metà destra
+        }
+        else {
+            destra = medio - 1;  // L'elemento è nella metà sinistra
+        }
+    }
+
+    return -1;  // L'elemento non è presente nell'array
+}
+
 // funzione che mette nella prima lista i nodi della seconda lista che non sono già presenti nella prima
 void appendUniqueNodes(Node** firstList, Node* secondList) {
     if (*firstList == NULL) {
@@ -76,32 +173,30 @@ void appendUniqueNodes(Node** firstList, Node* secondList) {
     }
 
     Node* current = *firstList;
-
+    int size = 0;
     while (current->next != NULL) {
         current = current->next;
+        size++;
     }
-
+    size++;
+    int* sortedArray = sortList(*firstList, &size);
     Node* secondCurrent = secondList;
 
     while (secondCurrent != NULL) {
         int alreadyExists = 0;
 
-        Node* temp = *firstList;
+        alreadyExists = ricercaBinaria(sortedArray, size, secondCurrent->valore);
 
-        while (temp != NULL) {
-            if (temp->valore == secondCurrent->valore) {
-                alreadyExists = 1;
-                break;
-            }
-            temp = temp->next;
-        }
-
-        if (!alreadyExists) {
+        if (alreadyExists == -1) {
             inserisciNodo(&current->next, secondCurrent->valore, secondCurrent->padre);
             current = current->next;
         }
 
         secondCurrent = secondCurrent->next;
+    }
+
+    if (size > 0) {
+        free(sortedArray);
     }
 }
 
@@ -381,109 +476,6 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
     }
 }
 
-/*
-// Funzione ricorsiva per trovare il valore più distante dal nodo (in avanti)
-TreeNode* findFurthest(struct TreeNode* root, int distanza, int autonomia) {
-
-    if (node == NULL)
-        return NULL; // Ritorna NULL se l'intero k non viene trovato
-    int sum = x + y;
-    if (node->stazione.distanza <= sum) {
-        if (node->right != NULL && node->right->stazione.distanza <= sum)
-            return findFurthest(node->right, x, y);
-        else
-            return node; // Ritorna il puntatore all'intero k
-    } else {
-        return findFurthest(node->left, x, y);
-    }
-
-    TreeNode *curr = root;
-    TreeNode *result = NULL;
-    while (curr != NULL) {
-        if (curr->stazione.distanza <= distanza + autonomia) {
-            result = curr;
-            curr = curr->right;
-        } else {
-            curr = curr->left;
-        }
-    }
-    return result;
-}
-
-
-// Funzione ricorsiva per trovare il valore più distante dal nodo (all'indietro)
-struct TreeNode* findFurthestBackward(struct TreeNode* node, int distanza, int autonomia) {
-    if (node == NULL) return NULL;
-
-    int diff = distanza - autonomia;
-
-    struct TreeNode* curr = node;
-    struct TreeNode* result = NULL;
-
-    while (curr != NULL) {
-        if (curr->stazione.distanza >= diff) {
-            result = curr;
-            curr = curr->left;
-        } else {
-            if (curr->right != NULL && curr->right->stazione.distanza >= diff) {
-                return findFurthestBackward(curr->right, distanza, autonomia);
-            }
-            curr = curr->right;
-        }
-    }
-    return result;
-}
-
-
-void cercaPercorsoMinimo(TreeNode* root, TreeNode* partenza, TreeNode* arrivo){
-    if (partenza->stazione.distanza == arrivo->stazione.distanza) {
-        printf("%d\n", partenza->stazione.distanza);
-        return;
-    }
-
-    TreeNode *curr = partenza;
-    Node *tappe = NULL;
-    aggiungiInCoda(&tappe, partenza->stazione.distanza);
-    printf("curr: %d, auto_max: %d\n", curr->stazione.distanza, curr->stazione.auto_max);
-    if (partenza->stazione.distanza < arrivo->stazione.distanza) {
-        while (curr->stazione.distanza < arrivo->stazione.distanza){
-            TreeNode *max = findFurthest(root, curr->stazione.distanza, curr->stazione.auto_max);
-            if (max->stazione.distanza == curr->stazione.distanza) {
-//                printf("curr: %d, auto_max: %d\n", curr->stazione.distanza, curr->stazione.auto_max);
-                printf("nessun percorso\n");
-                eliminaLista(&tappe);
-                return;
-            }
-            curr = max;
-            if (curr->stazione.distanza > arrivo->stazione.distanza) {
-                aggiungiInCoda(&tappe, arrivo->stazione.distanza);
-            } else {
-                aggiungiInCoda(&tappe, max->stazione.distanza);
-            }
-        }
-    } else {
-        // caso in cui la partenza è più avanti dell'arrivo
-        while (curr->stazione.distanza > arrivo->stazione.distanza){
-            TreeNode *max = findFurthestBackward(root, curr->stazione.distanza, curr->stazione.auto_max);
-            if (max->stazione.distanza == curr->stazione.distanza) {
-                printf("nessun percorso\n");
-                eliminaLista(&tappe);
-                return;
-            }
-            printf("curr: %d, auto_max: %d\n", curr->stazione.distanza, curr->stazione.auto_max);
-            curr = max;
-            if (curr->stazione.distanza < arrivo->stazione.distanza) {
-                aggiungiInCoda(&tappe, arrivo->stazione.distanza);
-            } else {
-                aggiungiInCoda(&tappe, max->stazione.distanza);
-            }
-        }
-    }
-
-    stampaLista(tappe);
-    eliminaLista(&tappe);
-}
-*/
 
 /**
  * Trova i valori compresi tra partenza e partenza + autonomia
