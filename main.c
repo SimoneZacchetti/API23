@@ -12,19 +12,19 @@ typedef struct {
     int autonomie_auto[MAX_AUTO];
 } Stazione;
 
-// struttura per rappresentare un nodo dell'albero
+// struttura per rappresentare un nodo dell'albero (bst)
 typedef struct TreeNode {
     Stazione stazione;
     struct TreeNode* left;
     struct TreeNode* right;
 } TreeNode;
 
-// struttura per trovare il percorso minimo, con riferimento al padre
-typedef struct Node {
-    int valore;
-    struct Node* padre;
-    struct Node* next;
-} Node;
+// nodo di una lista per trovare il percorso minimo, con riferimento al padre
+typedef struct ListNode {
+    Stazione* stazione;
+    struct ListNode* padre;
+    struct ListNode* next;
+} ListNode;
 
 // lista per trovare i nodi raggiungibili da un certo nodo, non tengo traccia del padre
 typedef struct NodePercorso {
@@ -32,230 +32,17 @@ typedef struct NodePercorso {
     struct NodePercorso* next;
 } NodePercorso;
 
-
-//*** FUNZIONI PER GESTIONE LISTA CON PADRE ***//
-
-// crea nodo della lista con padre
-Node* creaNodo(int valore, Node* padre, Node* next){
-    Node* nuovoNodo = (Node*)malloc(sizeof(Node));
-    nuovoNodo->valore = valore;
-    nuovoNodo->padre = padre;
-    nuovoNodo->next = next;
-    return nuovoNodo;
-}
-
-// inserisce un nodo nella lista con padre
-void inserisciNodo(Node** head, int valore, Node* padre) {
-    Node* newNode = creaNodo(valore, padre, NULL);
-    if (*head == NULL) {
-        *head = newNode;
-    } else {
-        Node* current = *head;
-        while (current->next != NULL) {
-            current = current->next;
-        }
-        current->next = newNode;
-    }
-}
-
-// Funzione per liberare la memoria occupata dalla lista con padre
-void freeList(Node* head) {
-    Node* current = head;
-    while (current != NULL) {
-        Node* temp = current;
-        current = current->next;
-        free(temp);
-    }
-}
-
-void merge(int arr[], int left[], int left_size, int right[], int right_size) {
-    int i = 0, j = 0, k = 0;
-
-    while (i < left_size && j < right_size) {
-        if (left[i] <= right[j]) {
-            arr[k] = left[i];
-            i++;
-        } else {
-            arr[k] = right[j];
-            j++;
-        }
-        k++;
-    }
-
-    while (i < left_size) {
-        arr[k] = left[i];
-        i++;
-        k++;
-    }
-
-    while (j < right_size) {
-        arr[k] = right[j];
-        j++;
-        k++;
-    }
-}
-
-void mergeSort(int arr[], int size) {
-    if (size <= 1) {
-        return;
-    }
-
-    int mid = size / 2;
-    int left[mid];
-    int right[size - mid];
-
-    for (int i = 0; i < mid; i++) {
-        left[i] = arr[i];
-    }
-
-    for (int i = mid; i < size; i++) {
-        right[i - mid] = arr[i];
-    }
-
-    mergeSort(left, mid);
-    mergeSort(right, size - mid);
-
-    merge(arr, left, mid, right, size - mid);
-}
-
-int* sortList(Node* head, int* size) {
-    int count = 0;
-    Node* current = head;
-
-    while (current != NULL) {
-        count++;
-        current = current->next;
-    }
-
-    int* sortedArray = (int*)malloc(count * sizeof(int));
-
-    current = head;
-    int i = 0;
-
-    while (current != NULL) {
-        sortedArray[i] = current->valore;
-        current = current->next;
-        i++;
-    }
-
-    mergeSort(sortedArray, count);
-
-    *size = count;
-    return sortedArray;
-}
-
-int ricercaBinaria(int* array, int lunghezza, int elemento) {
-    int sinistra = 0;
-    int destra = lunghezza - 1;
-
-    while (sinistra <= destra) {
-        int medio = (sinistra + destra) / 2;
-
-        if (array[medio] == elemento) {
-            return medio;  // Trovato l'elemento, restituisce l'indice
-        }
-        else if (array[medio] < elemento) {
-            sinistra = medio + 1;  // L'elemento è nella metà destra
-        }
-        else {
-            destra = medio - 1;  // L'elemento è nella metà sinistra
-        }
-    }
-
-    return -1;  // L'elemento non è presente nell'array
-}
-
-// funzione che mette nella prima lista i nodi della seconda lista che non sono già presenti nella prima
-void appendUniqueNodes(Node** firstList, Node* secondList) {
-    if (*firstList == NULL) {
-        *firstList = secondList;
-        return;
-    }
-
-    Node* current = *firstList;
-    int size = 0;
-    while (current->next != NULL) {
-        current = current->next;
-        size++;
-    }
-    size++;
-    int* sortedArray = sortList(*firstList, &size);
-    Node* secondCurrent = secondList;
-
-    while (secondCurrent != NULL) {
-        int alreadyExists = 0;
-
-        alreadyExists = ricercaBinaria(sortedArray, size, secondCurrent->valore);
-
-        if (alreadyExists == -1) {
-            inserisciNodo(&current->next, secondCurrent->valore, secondCurrent->padre);
-            current = current->next;
-        }
-
-        secondCurrent = secondCurrent->next;
-    }
-
-    if (size > 0) {
-        free(sortedArray);
-    }
-}
-
-void stampaLista(Node* head){
-    Node* current = head;
-    while (current != NULL) {
-        if (current->padre != NULL){
-            printf("distanza %d, padre %d\n", current->valore, current->padre->valore);
-        } else {
-            printf("distanza %d, padre %d\n", current->valore, -1);
-        }
-        current = current->next;
-        if (current != NULL) {
-            printf(" ");
-        }
-    }
-    printf("\n");
-}
+// lista di bst per tenere traccia dei vari "livelli" di ricerca
+typedef struct ListList {
+    ListNode* list;
+    struct ListList* next;
+} ListList;
 
 
 
-//*** FUNZIONI PER GESTIONE LISTA SENZA PADRE PER IL PERCORSO ***//
+//*** FUNZIONI PER GESTIONE ALBERO CON STAZIONI ***//
 
-// inserisce un nodo nella lista senza padre
-void inserisciInTesta(NodePercorso ** testa, int valore) {
-    NodePercorso * nuovoNodo = (NodePercorso *)malloc(sizeof(NodePercorso));
-    nuovoNodo->valore = valore;
-    nuovoNodo->next = *testa;
-    *testa = nuovoNodo;
-}
-
-// Funzione per liberare la memoria occupata dalla lista senza padre
-void freeListPercorso(NodePercorso* head) {
-    NodePercorso* current = head;
-    while (current != NULL) {
-        NodePercorso* temp = current;
-        current = current->next;
-        free(temp);
-    }
-}
-
-// Funzione per stampare tutti gli elementi della lista percorso
-void stampaListaPercorso(NodePercorso * head) {
-    NodePercorso * current = head;
-    while (current != NULL) {
-        printf("%d", current->valore);
-        current = current->next;
-        if (current != NULL) {
-            printf(" ");
-        }
-    }
-    printf("\n");
-}
-
-
-
-//*** FUNZIONI PER GESTIONE ALBERO ***//
-
-// crea nodo dell'albero
+// crea nodo dell'albero con le stazioni
 TreeNode* createNode(Stazione stazione) {
     TreeNode* newNode = (TreeNode*)malloc(sizeof(TreeNode));
     newNode->stazione = stazione;
@@ -361,7 +148,164 @@ void freeTree(TreeNode* root) {
 
 
 
+//*** FUNZIONI PER GESTIONE LISTA CON PADRE ***//
+
+// crea nodo della lista con padre
+ListNode* creaListNode(Stazione* stazione, ListNode* padre) {
+    ListNode* newNode = (ListNode*)malloc(sizeof(ListNode));
+    newNode->stazione = stazione;
+    newNode->padre = padre;
+    newNode->next = NULL;
+    return newNode;
+}
+
+// inserisce un nodo nella lista con padre in ordine crescente
+ListNode* inserisciInOrdine(ListNode* head, Stazione* stazione, ListNode* padre) {
+    ListNode* newNode = creaListNode(stazione, padre);
+
+    if (head == NULL) {
+        // Inserimento in testa alla lista
+        newNode->next = head;
+        return newNode;
+    }
+
+    if (stazione->distanza < head->stazione->distanza) {
+        // Inserimento in testa alla lista
+        newNode->next = head;
+        return newNode;
+    }
+
+    ListNode* current = head;
+    ListNode* prev = NULL;
+
+    while (current != NULL && current->stazione->distanza <= stazione->distanza) {
+        if (current->stazione == stazione) {
+            // La stazione è già stata inserita, quindi liberiamo il nodo appena creato
+            free(newNode);
+            return head;
+        }
+        prev = current;
+        current = current->next;
+    }
+
+    // Inserimento in posizione corretta
+    prev->next = newNode;
+    newNode->next = current;
+
+    return head;
+}
+
+// Function to display a list
+void stampaNodeList(ListNode* head) {
+    ListNode* current = head;
+    while (current != NULL) {
+        printf("%d ", current->stazione->distanza);
+        if (current->padre != NULL) {
+            printf("padre: %d ", current->padre->stazione->distanza);
+        } else {
+            printf("padre: NULL ");
+        }
+        printf("\n");
+        current = current->next;
+    }
+    printf("\n");
+}
+
+// cancella la lista
+void freeList(ListNode* head) {
+    ListNode* current = head;
+    while (current != NULL) {
+        ListNode* temp = current;
+        current = current->next;
+        free(temp);
+    }
+}
+
+
+
+//*** FUNZIONE PER GESTIRE LA LISTA DI LISTE ***//
+
+// inserisce una lista nella lista di liste
+ListList* inserisciLista(ListList* head, ListNode* list) {
+    ListList* newList = (ListList*)malloc(sizeof(ListList));
+    newList->list = list;
+    newList->next = NULL;
+
+    if (head == NULL) {
+        // La lista head è vuota, quindi il nuovo nodo diventa la testa
+        return newList;
+    }
+
+    // Scorrere la lista head fino all'ultimo elemento
+    ListList* current = head;
+    while (current->next != NULL) {
+        current = current->next;
+    }
+
+    // Collegare il nuovo nodo alla fine della lista
+    current->next = newList;
+
+    return head;
+}
+
+// Funzione per liberare la memoria occupata dalla lista ListList
+void freeListList(ListList* head) {
+    ListList* current = head;
+    while (current != NULL) {
+        ListList* temp = current;
+        current = current->next;
+        freeList(temp->list); // Libera la memoria occupata dalla lista ListNode
+        free(temp);
+    }
+}
+
+// funzione per stampare la lista di liste
+void stampaLista(ListList* head) {
+    ListList* current = head;
+    while (current != NULL) {
+        stampaNodeList(current->list);
+        current = current->next;
+    }
+}
+
+
+
+//*** FUNZIONI PER GESTIONE LISTA SENZA PADRE PER IL PERCORSO ***//
+
+// inserisce un nodo nella lista senza padre
+void inserisciInTesta(NodePercorso ** testa, int valore) {
+    NodePercorso * nuovoNodo = (NodePercorso *)malloc(sizeof(NodePercorso));
+    nuovoNodo->valore = valore;
+    nuovoNodo->next = *testa;
+    *testa = nuovoNodo;
+}
+
+// Funzione per liberare la memoria occupata dalla lista senza padre
+void freeListPercorso(NodePercorso* head) {
+    NodePercorso* current = head;
+    while (current != NULL) {
+        NodePercorso* temp = current;
+        current = current->next;
+        free(temp);
+    }
+}
+
+// Funzione per stampare tutti gli elementi della lista percorso
+void stampaListaPercorso(NodePercorso * head) {
+    NodePercorso * current = head;
+    while (current != NULL) {
+        printf("%d", current->valore);
+        current = current->next;
+        if (current != NULL) {
+            printf(" ");
+        }
+    }
+    printf("\n");
+}
+
+
 //*** FUNZIONI PER GESTIONE COMANDI RICEVUTI DA INPUT ***//
+
 // aggiunge una stazione al bst
 void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autonomie[]) {
     Stazione stazione;
@@ -383,47 +327,6 @@ void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autono
     }
 
     *root = insertNode(*root, stazione);
-//    cercaAdiacenti(*root);
-}
-
-
-void comandoAggiungiStazione(TreeNode** root, char* restoStringa) {
-    // Implementazione per l'aggiunta della stazione
-    // Utilizza il parametro restoStringa per ottenere gli argomenti necessari
-
-    // Esempio di implementazione:
-    int distanza;
-    int numero_auto;
-    int autonomie[MAX_AUTO];
-
-    char* token = strtok(restoStringa, " ");
-    if (token == NULL) {
-        printf("Errore: specificare la distanza della stazione.\n");
-        return;
-    }
-    distanza = atoi(token);
-
-    token = strtok(NULL, " ");
-    if (token == NULL) {
-        printf("Errore: specificare il numero di auto.\n");
-        return;
-    }
-    numero_auto = atoi(token);
-
-    int i = 0;
-    while (i < numero_auto) {
-        token = strtok(NULL, " ");
-        if (token == NULL) {
-            printf("Errore: specificare le autonomie delle auto.\n");
-            break;
-        }
-        autonomie[i] = atoi(token);
-        i++;
-    }
-
-    if (i == numero_auto) {
-        aggiungiStazione(root, distanza, numero_auto, autonomie);
-    }
 }
 
 // aggiunge un'auto ad una stazione
@@ -451,7 +354,6 @@ void aggiungiAuto(TreeNode* stazione, int autonomia) {
 // elimina un'auto da una stazione
 void rottamaAuto(TreeNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
-//    int cambiata_auto_max = 0;
 
     int i;
     for (i = 0; i < MAX_AUTO; i++) {
@@ -464,7 +366,6 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
                         staz->auto_max = staz->autonomie_auto[j];
                     }
                 }
-//                cambiata_auto_max = 1;
             }
             printf("rottamata\n");
             break;
@@ -477,173 +378,225 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
 }
 
 
-/**
- * Trova i valori compresi tra partenza e partenza + autonomia
- * @param node nodo di partenza dell'albero
- * @param partenza partenza
- * @param autonomia autonomia
- * @param resultList lista risultante
- */
-void trovaValoriRange(TreeNode* node, Node* partenza, int autonomia, Node** resultList) {
-    // TODO verificare perche da problemi node == NULL || node->stazione.distanza > partenza->valore + autonomia || node->stazione.distanza < partenza->valore
-    if (node == NULL) {
+// funzione per la ricerca di tutti i nodi ragguibili da una stazione in avanti
+void cercaRaggiungibili(TreeNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* massimo, ListNode** nodoArrivo) {
+    if (node == NULL || *trovato) {
         return;
     }
 
-    trovaValoriRange(node->left, partenza, autonomia, resultList);
+    if (node->stazione.distanza > partenza->stazione->distanza + autonomia) {
+        cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
+    } else if (node->stazione.distanza < partenza->stazione->distanza) {
+        cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
+    } else {
+        cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
 
-    if (node->stazione.distanza > partenza->valore && node->stazione.distanza <= partenza->valore + autonomia){
-        inserisciNodo(resultList, node->stazione.distanza, partenza);
+        if (node->stazione.distanza == arrivo){
+            *trovato = 1;
+            *nodoArrivo = creaListNode(&(node->stazione), partenza);
+            return;
+        }
+
+        if (node->stazione.distanza <= partenza->stazione->distanza + autonomia && node->stazione.distanza > partenza->stazione->distanza) {
+            if (node->stazione.distanza > *massimo){
+                *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
+            }
+        }
+
+        cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
     }
-
-    trovaValoriRange(node->right, partenza, autonomia, resultList);
 }
 
-/**
- * Trova i valori compresi tra partenza e partenza - autonomia
- * @param node nodo di partenza dell'albero
- * @param partenza partenza
- * @param autonomia autonomia
- * @param resultList lista risultante
- */
-void trovaValoriRangeIndietro(TreeNode* node, Node* partenza, int autonomia, Node** resultList) {
-    if (node == NULL) {
+
+// funzione per la ricerca di tutti i nodi ragguibili da una stazione all'indietro
+void cercaRaggiungibiliIndietro(TreeNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* minimo, ListNode** nodoArrivo) {
+    if (node == NULL || *trovato) {
         return;
     }
 
-    trovaValoriRangeIndietro(node->left, partenza, autonomia, resultList);
+    if (node->stazione.distanza < partenza->stazione->distanza - autonomia) {
+        cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
+    } else if (node->stazione.distanza >= partenza->stazione->distanza) {
+        cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
+    } else {
+        cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
 
-    if (node->stazione.distanza >= partenza->valore - autonomia && node->stazione.distanza < partenza->valore) {
-        inserisciNodo(resultList, node->stazione.distanza, partenza);
+        if (node->stazione.distanza == arrivo){
+            *trovato = 1;
+            *nodoArrivo = creaListNode(&(node->stazione), partenza);
+            return;
+        }
+
+        if (node->stazione.distanza >= partenza->stazione->distanza - autonomia && node->stazione.distanza < partenza->stazione->distanza) {
+            // inserisco solo i nodi che sono piu piccoli del primo elemento della lista, gli altri saranno già presenti
+            if (node->stazione.distanza < *minimo){
+                *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
+            }
+        }
+
+        cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
     }
-
-    trovaValoriRangeIndietro(node->right, partenza, autonomia, resultList);
 }
 
 
-/**
- * Cerca i nodi raggiungibili da una qualunque stazione di partenza in avanti
- * @param root nodo di partenza
- * @param partenza partenza
- * @param autonomia autonomia
- * @return lista di nodi raggiungibili
- */
-Node* cercaRaggiungibili(TreeNode* root, Node* partenza, int autonomia) {
-    Node* resultList = NULL;
-    trovaValoriRange(root, partenza, autonomia, &resultList);
-    return resultList;
-}
-
-/**
- * Cerca i nodi raggiungibili da una qualunque stazione di partenza all'indietro
- * @param root nodo di partenza
- * @param partenza partenza
- * @param autonomia autonomia
- * @return lista di nodi raggiungibili
- */
-Node* cercaRaggiungibiliIndietro(TreeNode* root, Node* partenza, int autonomia) {
-    Node* resultList = NULL;
-    trovaValoriRangeIndietro(root, partenza, autonomia, &resultList);
-    return resultList;
+// funzione per trovare il nodo con distanza piu alta nella lista, usato nel percorso in avanti
+// migliorabile
+int trovaMassimo(ListNode* list){
+    int massimo = 0;
+    ListNode* curr = list;
+    while(curr != NULL){
+        if (curr->stazione->distanza > massimo){
+            massimo = curr->stazione->distanza;
+        }
+        curr = curr->next;
+    }
+    return massimo;
 }
 
 // funzione che cerca il percorso minimo tra due stazioni in ordine crescente
 void cercaPercorso(TreeNode* root, int partenza, int arrivo){
+    int massimo = 0, trovato = 0;
+
     TreeNode * partenzaTreeNode = searchNode(root, partenza);
-    Node * partenzaNode = creaNodo(partenza, NULL, NULL);
-    Node* raggiungibili = cercaRaggiungibili(root, partenzaNode, partenzaTreeNode->stazione.auto_max);
-    //stampaLista(raggiungibili);
-    Node* curr = raggiungibili;
-    Node* nuoviRaggiungibili = NULL;
-    NodePercorso* percorso = NULL;
+    ListNode * partenzaNode = creaListNode(&partenzaTreeNode->stazione, NULL);
+    ListNode* raggiungibili = NULL;
+    ListNode* nodoArrivo = NULL;
 
-    while(curr != NULL){
-        // se il nodo corrente è il nodo di arrivo interrompi il ciclo
-        if (curr->valore == arrivo){
-            break;
-        }
-        // aggiungo a raggiungibili i nodi raggiungibili dal nodo corrente che non sono già presenti in raggiungibili
-        TreeNode* current = searchNode(root, curr->valore);
-        nuoviRaggiungibili = cercaRaggiungibili(root, curr, current->stazione.auto_max);
-        appendUniqueNodes(&raggiungibili, nuoviRaggiungibili);
-        // stampaLista(raggiungibili);
+    cercaRaggiungibili(root, &raggiungibili, partenzaNode, partenzaTreeNode->stazione.auto_max, &trovato, arrivo, &massimo, &nodoArrivo);
 
-        freeList(nuoviRaggiungibili);
-        curr = curr->next;
-    }
-
-    if (curr == NULL){
-        // nessun percorso trovato
+    // se non trovo nodi raggiungibili dalla partenza stampo nessun percorso
+    if (raggiungibili == NULL){
         printf("nessun percorso\n");
-        freeList(raggiungibili);
-        // freeList(nuoviRaggiungibili);
         return;
     }
 
-    while (curr != NULL){
-        inserisciInTesta(&percorso, curr->valore);
-        curr = curr->padre;
-    }
-
-    stampaListaPercorso(percorso);
-    if (raggiungibili != NULL) {
+    // se trovo l'arrivo stampo il percorso e libero la memoria
+    if (trovato){
+        printf("%d %d\n", partenza, arrivo);
+        freeList(partenzaNode);
         freeList(raggiungibili);
+        return;
     }
 
-    if (percorso != NULL) {
+    // creo la lista di liste
+    ListList* head = NULL;
+    // inserisco la prima lista dei raggiungibili
+    head = inserisciLista(head, raggiungibili);
+
+    // trovo il massimo dei raggiungibili
+    massimo = trovaMassimo(raggiungibili);
+
+    // scorro la lista di liste
+    ListList * curr = head;
+
+    while(curr != NULL && !trovato){
+        ListNode * currNode = curr->list;
+        ListNode * nuoviRaggiungibili = NULL;
+        while(currNode != NULL && !trovato){
+            cercaRaggiungibili(root, &nuoviRaggiungibili, currNode, currNode->stazione->auto_max, &trovato, arrivo, &massimo, &nodoArrivo);
+            currNode = currNode->next;
+        }
+        if (nuoviRaggiungibili != NULL){
+            massimo = trovaMassimo(nuoviRaggiungibili);
+            head = inserisciLista(head, nuoviRaggiungibili);
+        }
+        curr = curr->next;
+    }
+
+    NodePercorso * percorso = NULL;
+    // se trovo l'arrivo risalgo i padri dei nodi, stampo il percorso e libero la memoria
+    if (trovato){
+        while (nodoArrivo != NULL){
+            inserisciInTesta(&percorso, nodoArrivo->stazione->distanza);
+            nodoArrivo = nodoArrivo->padre;
+        }
+        stampaListaPercorso(percorso);
         freeListPercorso(percorso);
+        freeListList(head);
+        return;
+    }
+
+    // se non trovo l'arrivo stampo nessun percorso e libero la memoria
+    if(curr == NULL){
+        freeListList(head);
+        printf("nessun percorso\n");
+        return;
     }
 }
+
 
 // funzione che cerca il percorso minimo tra due stazioni in ordine decrescente
 void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
+    int minimo = INT_MAX, trovato = 0;
+
     TreeNode * partenzaTreeNode = searchNode(root, partenza);
-    Node * partenzaNode = creaNodo(partenza, NULL, NULL);
-    Node* raggiungibili = cercaRaggiungibiliIndietro(root, partenzaNode, partenzaTreeNode->stazione.auto_max);
-//    printf("raggiungibili: ");
-//    stampaLista(raggiungibili);
+    ListNode * partenzaNode = creaListNode(&partenzaTreeNode->stazione, NULL);
+    ListNode* raggiungibili = NULL;
+    ListNode* nodoArrivo = NULL;
 
-    Node* curr = raggiungibili;
-    Node* nuoviRaggiungibili = NULL;
-    NodePercorso* percorso = NULL;
+    cercaRaggiungibiliIndietro(root, &raggiungibili, partenzaNode, partenzaTreeNode->stazione.auto_max, &trovato, arrivo, &minimo, &nodoArrivo);
+    // in raggiungibili ho tutti i nodi raggiungibili da partenza in un bst
 
-    while(curr != NULL){
-        // se il nodo corrente è il nodo di arrivo interrompi il ciclo
-        if (curr->valore == arrivo){
-            break;
-        }
-        // aggiungo a raggiungibili i nodi raggiungibili dal nodo corrente che non sono già presenti in raggiungibili
-        TreeNode* current = searchNode(root, curr->valore);
-        nuoviRaggiungibili = cercaRaggiungibiliIndietro(root, curr, current->stazione.auto_max);
-        appendUniqueNodes(&raggiungibili, nuoviRaggiungibili);
-        // stampaLista(raggiungibili);
-
-        freeList(nuoviRaggiungibili);
-        curr = curr->next;
-    }
-
-    if (curr == NULL){
-        // nessun percorso trovato
+    // se non trovo nodi raggiungibili dalla partenza stampo nessun percorso
+    if (raggiungibili == NULL){
         printf("nessun percorso\n");
-        freeList(raggiungibili);
-        // freeList(nuoviRaggiungibili);
         return;
     }
 
-    while (curr != NULL){
-        inserisciInTesta(&percorso, curr->valore);
-        curr = curr->padre;
-    }
-    // printf("percorso trovato: ");
-    stampaListaPercorso(percorso);
-    if (raggiungibili != NULL) {
+    // se trovo l'arrivo stampo il percorso e libero la memoria
+    if (trovato){
+        printf("%d %d\n", partenza, arrivo);
+        freeList(partenzaNode);
         freeList(raggiungibili);
+        return;
     }
 
-    if (percorso != NULL) {
+    // il minimo diventa il nodo con distanza minore della lista di raggiungibili
+    minimo = raggiungibili->stazione->distanza;
+
+    // creo la lista di liste
+    ListList* head = NULL;
+    // inserisco la prima lista dei raggiungibili
+    head = inserisciLista(head, raggiungibili);
+
+    // scorro la lista di liste
+    ListList * curr = head;
+    while(curr != NULL && !trovato){
+        ListNode * currNode = curr->list;
+        ListNode * nuoviRaggiungibili = NULL;
+        // scorro la lista dei nodi raggiungibili
+        while(currNode != NULL && !trovato){
+            cercaRaggiungibiliIndietro(root, &nuoviRaggiungibili, currNode, currNode->stazione->auto_max, &trovato, arrivo, &minimo, &nodoArrivo);
+            currNode = currNode->next;
+        }
+        if (nuoviRaggiungibili != NULL){
+            minimo = nuoviRaggiungibili->stazione->distanza;
+            head = inserisciLista(head, nuoviRaggiungibili);
+        }
+        curr = curr->next;
+    }
+
+    NodePercorso * percorso = NULL;
+    // se trovo l'arrivo risalgo i padri dei nodi, stampo il percorso e libero la memoria
+    if (trovato){
+        while (nodoArrivo != NULL){
+            inserisciInTesta(&percorso, nodoArrivo->stazione->distanza);
+            nodoArrivo = nodoArrivo->padre;
+        }
+        stampaListaPercorso(percorso);
         freeListPercorso(percorso);
+        freeListList(head);
+        return;
+    }
+
+    // se non trovo l'arrivo stampo nessun percorso e libero la memoria
+    if(curr == NULL){
+        freeListList(head);
+        printf("nessun percorso\n");
+        return;
     }
 }
+
 
 int main() {
     TreeNode* root = NULL;
@@ -653,8 +606,6 @@ int main() {
     int distanza, numero_auto, autonomia;
     int partenza, arrivo;
     int autonomie[MAX_AUTO];
-//    size_t buffer_size = 0;
-//    ssize_t input_length;
 
     while ((fscanf(file, "%s", comando) != EOF)) {
         if (strcmp(comando, "aggiungi-stazione") == 0) {
@@ -700,17 +651,6 @@ int main() {
             }
         }
     }
-//        inorderTraversal(root);
-
-
-    // Liberazione della memoria occupata dall'albero
-    freeTree(root);
 
     return 0;
 }
-
-
-// NOTE
-// quando demolisco una stazione per ora non viene tolta dalla lista di adiacenza delle altre stazioni
-// TODO controllare il caso di percorso al contrario (test3)
-// TODO fare disambiguazione tra percorsi con uguale numero di stazioni
