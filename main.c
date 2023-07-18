@@ -63,7 +63,6 @@ TreeNode* insertNode(TreeNode* root, Stazione stazione) {
     } else if (stazione.distanza > root->stazione.distanza) {
         root->right = insertNode(root->right, stazione);
     } else {
-        // TODO verificare se è corretto il fatto che stampi se la stazione è già presente
         printf("non aggiunta\n");
     }
 
@@ -386,7 +385,7 @@ void cercaRaggiungibili(TreeNode* node, ListNode** resultList, ListNode* partenz
 
     if (node->stazione.distanza > partenza->stazione->distanza + autonomia) {
         cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
-    } else if (node->stazione.distanza < partenza->stazione->distanza) {
+    } else if (node->stazione.distanza < *massimo) {
         cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
     } else {
         cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
@@ -397,10 +396,9 @@ void cercaRaggiungibili(TreeNode* node, ListNode** resultList, ListNode* partenz
             return;
         }
 
-        if (node->stazione.distanza <= partenza->stazione->distanza + autonomia && node->stazione.distanza > partenza->stazione->distanza) {
-            if (node->stazione.distanza > *massimo){
-                *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
-            }
+        if (node->stazione.distanza <= partenza->stazione->distanza + autonomia && node->stazione.distanza > *massimo) {
+            *massimo = node->stazione.distanza;
+            *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
         }
 
         cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
@@ -416,7 +414,7 @@ void cercaRaggiungibiliIndietro(TreeNode* node, ListNode** resultList, ListNode*
 
     if (node->stazione.distanza < partenza->stazione->distanza - autonomia) {
         cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
-    } else if (node->stazione.distanza >= partenza->stazione->distanza) {
+    } else if (node->stazione.distanza >= *minimo) {
         cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
     } else {
         cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
@@ -427,11 +425,9 @@ void cercaRaggiungibiliIndietro(TreeNode* node, ListNode** resultList, ListNode*
             return;
         }
 
-        if (node->stazione.distanza >= partenza->stazione->distanza - autonomia && node->stazione.distanza < partenza->stazione->distanza) {
+        if (node->stazione.distanza >= partenza->stazione->distanza - autonomia && node->stazione.distanza < *minimo) {
             // inserisco solo i nodi che sono piu piccoli del primo elemento della lista, gli altri saranno già presenti
-            if (node->stazione.distanza < *minimo){
-                *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
-            }
+            *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
         }
 
         cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
@@ -497,7 +493,7 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
             currNode = currNode->next;
         }
         if (nuoviRaggiungibili != NULL){
-            massimo = trovaMassimo(nuoviRaggiungibili);
+            massimo = 0;
             head = inserisciLista(head, nuoviRaggiungibili);
         }
         curr = curr->next;
@@ -600,27 +596,26 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
 
 int main() {
     TreeNode* root = NULL;
-    FILE* file = stdin;
 
     char comando[20];
     int distanza, numero_auto, autonomia;
     int partenza, arrivo;
     int autonomie[MAX_AUTO];
 
-    while ((fscanf(file, "%s", comando) != EOF)) {
+    while (scanf("%s", comando) != EOF) {
         if (strcmp(comando, "aggiungi-stazione") == 0) {
-            if(fscanf (file, "%d %d", &distanza, &numero_auto) != EOF) {
+            if (scanf("%d %d", &distanza, &numero_auto) != EOF) {
                 for (int i = 0; i < numero_auto; i++) {
-                    if(fscanf(file, "%d", &autonomie [i]) != EOF){}
+                    if (scanf("%d", &autonomie[i]) != EOF){}
                 }
                 aggiungiStazione(&root, distanza, numero_auto, autonomie);
             }
         } else if (strcmp(comando, "demolisci-stazione") == 0) {
-            if (fscanf(file, "%d", &distanza) != EOF) {
+            if (scanf("%d", &distanza) != EOF) {
                 root = deleteNode(root, distanza);
             }
         } else if (strcmp(comando, "aggiungi-auto") == 0) {
-            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
+            if (scanf("%d %d", &distanza, &autonomia) != EOF) {
                 TreeNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     aggiungiAuto(stazione, autonomia);
@@ -629,7 +624,7 @@ int main() {
                 }
             }
         } else if (strcmp(comando, "rottama-auto") == 0) {
-            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
+            if (scanf("%d %d", &distanza, &autonomia) != EOF) {
                 TreeNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     rottamaAuto(stazione, autonomia);
@@ -638,7 +633,7 @@ int main() {
                 }
             }
         } else if (strcmp(comando, "pianifica-percorso") == 0) {
-            if (fscanf(file, "%d %d", &partenza, &arrivo) != EOF) {
+            if (scanf("%d %d", &partenza, &arrivo) != EOF) {
                 if (partenza == arrivo) {
                     printf("%d\n", partenza);
                     continue;
