@@ -600,27 +600,26 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
 
 int main() {
     TreeNode* root = NULL;
-    FILE* file = stdin;
 
     char comando[20];
     int distanza, numero_auto, autonomia;
     int partenza, arrivo;
     int autonomie[MAX_AUTO];
 
-    while ((fscanf(file, "%s", comando) != EOF)) {
+    while (scanf("%s", comando) != EOF) {
         if (strcmp(comando, "aggiungi-stazione") == 0) {
-            if(fscanf (file, "%d %d", &distanza, &numero_auto) != EOF) {
+            if (scanf("%d %d", &distanza, &numero_auto) != EOF) {
                 for (int i = 0; i < numero_auto; i++) {
-                    if(fscanf(file, "%d", &autonomie [i]) != EOF){}
+                    if (scanf("%d", &autonomie[i]) != EOF){}
                 }
                 aggiungiStazione(&root, distanza, numero_auto, autonomie);
             }
         } else if (strcmp(comando, "demolisci-stazione") == 0) {
-            if (fscanf(file, "%d", &distanza) != EOF) {
+            if (scanf("%d", &distanza) != EOF) {
                 root = deleteNode(root, distanza);
             }
         } else if (strcmp(comando, "aggiungi-auto") == 0) {
-            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
+            if (scanf("%d %d", &distanza, &autonomia) != EOF) {
                 TreeNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     aggiungiAuto(stazione, autonomia);
@@ -629,7 +628,7 @@ int main() {
                 }
             }
         } else if (strcmp(comando, "rottama-auto") == 0) {
-            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
+            if (scanf("%d %d", &distanza, &autonomia) != EOF) {
                 TreeNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     rottamaAuto(stazione, autonomia);
@@ -638,7 +637,7 @@ int main() {
                 }
             }
         } else if (strcmp(comando, "pianifica-percorso") == 0) {
-            if (fscanf(file, "%d %d", &partenza, &arrivo) != EOF) {
+            if (scanf("%d %d", &partenza, &arrivo) != EOF) {
                 if (partenza == arrivo) {
                     printf("%d\n", partenza);
                     continue;
