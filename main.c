@@ -1,9 +1,16 @@
+// red and black invece del bst primario per le stazioni
+// lista di bst per tenere traccia dei vari "livelli" di ricerca FUNZIONANTE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 
 #define MAX_AUTO 512
+
+// Definizione dei colori dei nodi
+#define RED 0
+#define BLACK 1
 
 // struttura per rappresentare una stazione
 typedef struct {
@@ -12,18 +19,22 @@ typedef struct {
     int autonomie_auto[MAX_AUTO];
 } Stazione;
 
-// struttura per rappresentare un nodo dell'albero (bst)
-typedef struct TreeNode {
+// Definizione della struttura del nodo dell'albero
+typedef struct RBNode {
     Stazione stazione;
-    struct TreeNode* left;
-    struct TreeNode* right;
-} TreeNode;
+    struct RBNode* parent;
+    struct RBNode* left;
+    struct RBNode* right;
+    int color;
+} RBNode;
 
-// nodo di una lista per trovare il percorso minimo, con riferimento al padre
+
+// nodo di una lista per trovare il percorso minimo, con riferimento al padre, provo a trasformarlo in un albero
 typedef struct ListNode {
     Stazione* stazione;
     struct ListNode* padre;
-    struct ListNode* next;
+    struct ListNode* right;
+    struct ListNode* left;
 } ListNode;
 
 // lista per trovare i nodi raggiungibili da un certo nodo, non tengo traccia del padre
@@ -40,183 +51,367 @@ typedef struct ListList {
 
 
 
-//*** FUNZIONI PER GESTIONE ALBERO CON STAZIONI ***//
 
-// crea nodo dell'albero con le stazioni
-TreeNode* createNode(Stazione stazione) {
-    TreeNode* newNode = (TreeNode*)malloc(sizeof(TreeNode));
-    newNode->stazione = stazione;
-    newNode->left = NULL;
-    newNode->right = NULL;
-    return newNode;
+// *** FUNZIONI PER L'ALBERO PRIMARIO RB *** //
+
+// Funzione ausiliaria per creare un nuovo nodo
+RBNode* createRBNode(Stazione stazione) {
+    RBNode* newRBNode = (RBNode*)malloc(sizeof(RBNode));
+    newRBNode->stazione = stazione;
+    newRBNode->parent = NULL;
+    newRBNode->left = NULL;
+    newRBNode->right = NULL;
+    newRBNode->color = RED; // Inizialmente tutti i nodi sono rossi
+    return newRBNode;
 }
 
-// inserisce un nodo nell'albero
-TreeNode* insertNode(TreeNode* root, Stazione stazione) {
-    if (root == NULL) {
-        printf("aggiunta\n");
-        return createNode(stazione);
-    }
-
-    if (stazione.distanza < root->stazione.distanza) {
-        root->left = insertNode(root->left, stazione);
-    } else if (stazione.distanza > root->stazione.distanza) {
-        root->right = insertNode(root->right, stazione);
-    } else {
-        printf("non aggiunta\n");
-    }
-
-    return root;
+// Funzione ausiliaria per eseguire la rotazione a sinistra
+void rotateLeft(RBNode** root, RBNode* x) {
+    RBNode* y = x->right;
+    x->right = y->left;
+    if (y->left != NULL)
+        y->left->parent = x;
+    y->parent = x->parent;
+    if (x->parent == NULL)
+        *root = y;
+    else if (x == x->parent->left)
+        x->parent->left = y;
+    else
+        x->parent->right = y;
+    y->left = x;
+    x->parent = y;
 }
 
-// trova l'elemento minimo nell'albero
-TreeNode* findMin(TreeNode* node) {
-    TreeNode* current = node;
-    while (current->left != NULL) {
-        current = current->left;
-    }
-    return current;
+// Funzione ausiliaria per eseguire la rotazione a destra
+void rotateRight(RBNode** root, RBNode* x) {
+    RBNode* y = x->left;
+    x->left = y->right;
+    if (y->right != NULL)
+        y->right->parent = x;
+    y->parent = x->parent;
+    if (x->parent == NULL)
+        *root = y;
+    else if (x == x->parent->left)
+        x->parent->left = y;
+    else
+        x->parent->right = y;
+    y->right = x;
+    x->parent = y;
 }
 
-// cancella una stazione dall'albero
-TreeNode* deleteNode(TreeNode* root, int distanza) {
-    if (root == NULL) {
-        printf("non demolita\n");
-        return root;
-    }
-
-    if (distanza < root->stazione.distanza) {
-        root->left = deleteNode(root->left, distanza);
-    } else if (distanza > root->stazione.distanza) {
-        root->right = deleteNode(root->right, distanza);
-    } else {
-        if (root->left == NULL) {
-            TreeNode* temp = root->right;
-            //cancellaElementoLista(&root->stazione.stazioni_adiacenti, distanza);
-            free(root);
-            printf("demolita\n");
-            return temp;
-        } else if (root->right == NULL) {
-            TreeNode* temp = root->left;
-            //cancellaElementoLista(&root->stazione.stazioni_adiacenti, distanza);
-            free(root);
-            printf("demolita\n");
-            return temp;
+// Funzione ausiliaria per eseguire la correzione dei colori dopo l'inserimento
+void fixInsert(RBNode** root, RBNode* z) {
+    while (z->parent != NULL && z->parent->color == RED) {
+        if (z->parent == z->parent->parent->left) {
+            RBNode* y = z->parent->parent->right;
+            if (y != NULL && y->color == RED) {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                z->parent->parent->color = RED;
+                z = z->parent->parent;
+            } else {
+                if (z == z->parent->right) {
+                    z = z->parent;
+                    rotateLeft(root, z);
+                }
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                rotateRight(root, z->parent->parent);
+            }
+        } else {
+            RBNode* y = z->parent->parent->left;
+            if (y != NULL && y->color == RED) {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                z->parent->parent->color = RED;
+                z = z->parent->parent;
+            } else {
+                if (z == z->parent->left) {
+                    z = z->parent;
+                    rotateRight(root, z);
+                }
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                rotateLeft(root, z->parent->parent);
+            }
         }
-
-        TreeNode* temp = findMin(root->right);
-        root->stazione = temp->stazione;
-        root->right = deleteNode(root->right, temp->stazione.distanza);
     }
+    (*root)->color = BLACK;
+}
 
+// Funzione principale per l'inserimento di un nodo nell'albero
+RBNode* insertNode(RBNode* root, Stazione stazione) {
+    RBNode* z = createRBNode(stazione);
+    RBNode* y = NULL;
+    RBNode* x = root;
+    while (x != NULL) {
+        y = x;
+        if (z->stazione.distanza == x->stazione.distanza) {
+            printf("non aggiunta\n");
+            free(z);  // Liberare la memoria del nodo non utilizzato
+            return root;
+        } else if (z->stazione.distanza < x->stazione.distanza) {
+            x = x->left;
+        } else {
+            x = x->right;
+        }
+    }
+    z->parent = y;
+    if (y == NULL)
+        root = z;
+    else if (z->stazione.distanza < y->stazione.distanza)
+        y->left = z;
+    else
+        y->right = z;
+    fixInsert(&root, z);
+    printf("aggiunta\n");
     return root;
 }
 
-// cerca un nodo nell'albero
-TreeNode* searchNode(TreeNode* root, int distanza) {
-    if (root == NULL || root->stazione.distanza == distanza) {
-        return root;
-    }
 
-    if (distanza < root->stazione.distanza) {
-        return searchNode(root->left, distanza);
-    } else {
-        return searchNode(root->right, distanza);
+// Funzione ausiliaria per la ricerca di un nodo con una distanza specifica nell'albero
+RBNode* searchNode(RBNode* root, int distanza) {
+    RBNode* current = root;
+    while (current != NULL) {
+        if (distanza == current->stazione.distanza)
+            return current;
+        else if (distanza < current->stazione.distanza)
+            current = current->left;
+        else
+            current = current->right;
     }
+    return NULL;
 }
 
-// stampa l'albero in ordine crescente
-void inorderTraversal(TreeNode* root) {
-    if (root == NULL) {
+// Funzione ausiliaria per eseguire la correzione dei colori dopo l'eliminazione
+void fixDelete(RBNode** root, RBNode* x) {
+    if (x == NULL || *root == NULL) {
         return;
     }
 
+    RBNode* sibling;
+    while (x != *root && x->color == BLACK) {
+        if (x == x->parent->left) {
+            sibling = x->parent->right;
+            if (sibling == NULL) {
+                break;  // Il sibling è NULL, esco dal ciclo
+            }
+
+            if (sibling->color == RED) {
+                sibling->color = BLACK;
+                x->parent->color = RED;
+                rotateLeft(root, x->parent);
+                sibling = x->parent->right;
+            }
+
+            if ((sibling->right == NULL || sibling->right->color == BLACK) &&
+                (sibling->left == NULL || sibling->left->color == BLACK)) {
+                sibling->color = RED;
+                x = x->parent;
+            } else {
+                if (sibling->right == NULL || sibling->right->color == BLACK) {
+                    if (sibling->left != NULL) {
+                        sibling->left->color = BLACK;
+                    }
+                    sibling->color = RED;
+                    rotateRight(root, sibling);
+                    sibling = x->parent->right;
+                }
+                sibling->color = x->parent->color;
+                x->parent->color = BLACK;
+                if (sibling->right != NULL) {
+                    sibling->right->color = BLACK;
+                }
+                rotateLeft(root, x->parent);
+                x = *root;
+            }
+        } else {
+            sibling = x->parent->left;
+            if (sibling == NULL) {
+                break;  // Il sibling è NULL, esco dal ciclo
+            }
+
+            if (sibling->color == RED) {
+                sibling->color = BLACK;
+                x->parent->color = RED;
+                rotateRight(root, x->parent);
+                sibling = x->parent->left;
+            }
+
+            if ((sibling->left == NULL || sibling->left->color == BLACK) &&
+                (sibling->right == NULL || sibling->right->color == BLACK)) {
+                sibling->color = RED;
+                x = x->parent;
+            } else {
+                if (sibling->left == NULL || sibling->left->color == BLACK) {
+                    if (sibling->right != NULL) {
+                        sibling->right->color = BLACK;
+                    }
+                    sibling->color = RED;
+                    rotateLeft(root, sibling);
+                    sibling = x->parent->left;
+                }
+                sibling->color = x->parent->color;
+                x->parent->color = BLACK;
+                if (sibling->left != NULL) {
+                    sibling->left->color = BLACK;
+                }
+                rotateRight(root, x->parent);
+                x = *root;
+            }
+        }
+    }
+
+    if (x != NULL) {
+        x->color = BLACK;
+    }
+}
+
+// Funzione ausiliaria per trovare il nodo minimo a partire da un nodo specifico
+RBNode* findMinimumNode(RBNode* node) {
+    while (node->left != NULL) {
+        node = node->left;
+    }
+    return node;
+}
+
+// Funzione ausiliaria per sostituire un nodo con un altro nodo nell'albero
+void transplant(RBNode** root, RBNode* u, RBNode* v) {
+    if (u->parent == NULL) {
+        *root = v;
+    } else if (u == u->parent->left) {
+        u->parent->left = v;
+    } else {
+        u->parent->right = v;
+    }
+    if (v != NULL) {
+        v->parent = u->parent;
+    }
+}
+
+// Funzione principale per eliminare un nodo dall'albero
+RBNode* deleteNode(RBNode* root, int distanza) {
+    RBNode* z = searchNode(root, distanza);
+    if (z == NULL) {
+        printf("non demolita\n");
+        return root; // Il nodo da eliminare non è presente nell'albero
+    }
+
+    RBNode* x;
+    RBNode* y = z;
+    int yOriginalColor = y->color;
+
+    if (z->left == NULL) {
+        x = z->right;
+        transplant(&root, z, z->right);
+    } else if (z->right == NULL) {
+        x = z->left;
+        transplant(&root, z, z->left);
+    } else {
+        y = findMinimumNode(z->right);
+        yOriginalColor = y->color;
+        x = y->right;
+        if (y->parent == z) {
+            if (x != NULL) {
+                x->parent = y;
+            }
+        } else {
+            transplant(&root, y, y->right);
+            y->right = z->right;
+            if (y->right != NULL) {
+                y->right->parent = y;
+            }
+        }
+        transplant(&root, z, y);
+        y->left = z->left;
+        y->left->parent = y;
+        y->color = z->color;
+    }
+
+    if (yOriginalColor == BLACK) {
+        fixDelete(&root, x);
+    }
+
+    free(z);
+    printf("demolita\n");
+    return root;
+}
+
+
+// Funzione ausiliaria per liberare la memoria dell'albero
+void deleteTree(RBNode* root) {
+    if (root == NULL) return;
+    deleteTree(root->left);
+    deleteTree(root->right);
+    free(root);
+}
+
+// Funzione ausiliaria per stampare l'albero in ordine crescente
+void inorderTraversal(RBNode* root) {
+    if (root == NULL) return;
     inorderTraversal(root->left);
     printf("%d ", root->stazione.distanza);
     inorderTraversal(root->right);
 }
 
-// elimina l'albero
-void freeTree(TreeNode* root) {
-    if (root != NULL) {
-        freeTree(root->left);
-        freeTree(root->right);
-        free(root);
-    }
-}
 
 
+// *** FUNZIONI PER GESTIONE DI ALBERO RB DI RAGGIUNGIBILITA *** //
 
-//*** FUNZIONI PER GESTIONE LISTA CON PADRE ***//
-
-// crea nodo della lista con padre
-ListNode* creaListNode(Stazione* stazione, ListNode* padre) {
+// Crea un nodo dell'albero
+ListNode* creaTreeNode(Stazione* stazione, ListNode* padre) {
     ListNode* newNode = (ListNode*)malloc(sizeof(ListNode));
     newNode->stazione = stazione;
     newNode->padre = padre;
-    newNode->next = NULL;
+    newNode->right = NULL;
+    newNode->left = NULL;
     return newNode;
 }
 
-// inserisce un nodo nella lista con padre in ordine crescente
-ListNode* inserisciInOrdine(ListNode* head, Stazione* stazione, ListNode* padre) {
-    ListNode* newNode = creaListNode(stazione, padre);
-
-    if (head == NULL) {
-        // Inserimento in testa alla lista
-        newNode->next = head;
-        return newNode;
+// Inserisce un nodo nell'albero in ordine crescente
+void inserisciInOrdine(struct ListNode** root, Stazione* stazione, ListNode* padre) {
+    // Se l'albero è vuoto, crea un nuovo nodo come radice
+    if (*root == NULL) {
+        *root = creaTreeNode(stazione, padre);
+        return;
     }
 
-    if (stazione->distanza < head->stazione->distanza) {
-        // Inserimento in testa alla lista
-        newNode->next = head;
-        return newNode;
+    // Se la distanza del nodo corrente è uguale a quella del nodo da inserire, non fare nulla
+    if ((*root)->stazione->distanza == stazione->distanza) {
+        return;
     }
 
-    ListNode* current = head;
-    ListNode* prev = NULL;
-
-    while (current != NULL && current->stazione->distanza <= stazione->distanza) {
-        if (current->stazione == stazione) {
-            // La stazione è già stata inserita, quindi liberiamo il nodo appena creato
-            free(newNode);
-            return head;
-        }
-        prev = current;
-        current = current->next;
+    // Altrimenti, ricorre ricorsivamente sulla sottoalbero sinistro o destro
+    if (stazione->distanza < (*root)->stazione->distanza) {
+        inserisciInOrdine(&((*root)->left), stazione, padre);
+    } else {
+        inserisciInOrdine(&((*root)->right), stazione, padre);
     }
-
-    // Inserimento in posizione corretta
-    prev->next = newNode;
-    newNode->next = current;
-
-    return head;
 }
 
-// Function to display a list
-void stampaNodeList(ListNode* head) {
-    ListNode* current = head;
-    while (current != NULL) {
-        printf("%d ", current->stazione->distanza);
-        if (current->padre != NULL) {
-            printf("padre: %d ", current->padre->stazione->distanza);
+
+
+
+// Stampa l'albero in-order
+void stampaAlbero(ListNode* root) {
+    if (root != NULL) {
+        stampaAlbero(root->left);
+        printf("%d ", root->stazione->distanza);
+        if (root->padre != NULL) {
+            printf("padre: %d \n", root->padre->stazione->distanza);
         } else {
-            printf("padre: NULL ");
+            printf("padre: NULL \n");
         }
-        printf("\n");
-        current = current->next;
+        stampaAlbero(root->right);
     }
-    printf("\n");
 }
 
-// cancella la lista
-void freeList(ListNode* head) {
-    ListNode* current = head;
-    while (current != NULL) {
-        ListNode* temp = current;
-        current = current->next;
-        free(temp);
+// Dealloca l'albero
+void freeAlbero(ListNode* root) {
+    if (root != NULL) {
+        freeAlbero(root->left);
+        freeAlbero(root->right);
+        free(root);
     }
 }
 
@@ -253,7 +448,7 @@ void freeListList(ListList* head) {
     while (current != NULL) {
         ListList* temp = current;
         current = current->next;
-        freeList(temp->list); // Libera la memoria occupata dalla lista ListNode
+        freeAlbero(temp->list); // Libera la memoria occupata dalla lista ListNode
         free(temp);
     }
 }
@@ -262,7 +457,8 @@ void freeListList(ListList* head) {
 void stampaLista(ListList* head) {
     ListList* current = head;
     while (current != NULL) {
-        stampaNodeList(current->list);
+        printf("albero: ");
+        stampaAlbero(current->list);
         current = current->next;
     }
 }
@@ -306,7 +502,7 @@ void stampaListaPercorso(NodePercorso * head) {
 //*** FUNZIONI PER GESTIONE COMANDI RICEVUTI DA INPUT ***//
 
 // aggiunge una stazione al bst
-void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autonomie[]) {
+void aggiungiStazione(RBNode** root, int distanza, int numero_auto, int autonomie[]) {
     Stazione stazione;
     stazione.distanza = distanza;
     stazione.auto_max = 0;
@@ -329,7 +525,7 @@ void aggiungiStazione(TreeNode** root, int distanza, int numero_auto, int autono
 }
 
 // aggiunge un'auto ad una stazione
-void aggiungiAuto(TreeNode* stazione, int autonomia) {
+void aggiungiAuto(RBNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
 
     int i;
@@ -351,7 +547,7 @@ void aggiungiAuto(TreeNode* stazione, int autonomia) {
 }
 
 // elimina un'auto da una stazione
-void rottamaAuto(TreeNode* stazione, int autonomia) {
+void rottamaAuto(RBNode* stazione, int autonomia) {
     Stazione* staz = &(stazione->stazione);
 
     int i;
@@ -378,27 +574,28 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
 
 
 // funzione per la ricerca di tutti i nodi ragguibili da una stazione in avanti
-void cercaRaggiungibili(TreeNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* massimo, ListNode** nodoArrivo) {
+void cercaRaggiungibili(RBNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* massimo, ListNode** nodoArrivo) {
     if (node == NULL || *trovato) {
         return;
     }
 
     if (node->stazione.distanza > partenza->stazione->distanza + autonomia) {
         cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
-    } else if (node->stazione.distanza < *massimo) {
+    } else if (node->stazione.distanza < partenza->stazione->distanza) {
         cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
     } else {
         cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
 
         if (node->stazione.distanza == arrivo){
             *trovato = 1;
-            *nodoArrivo = creaListNode(&(node->stazione), partenza);
+            *nodoArrivo = creaTreeNode(&(node->stazione), partenza);
             return;
         }
 
-        if (node->stazione.distanza <= partenza->stazione->distanza + autonomia && node->stazione.distanza > *massimo) {
-            *massimo = node->stazione.distanza;
-            *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
+        if (node->stazione.distanza <= partenza->stazione->distanza + autonomia && node->stazione.distanza > partenza->stazione->distanza) {
+            if (node->stazione.distanza > *massimo){
+                inserisciInOrdine(resultList, &(node->stazione), partenza);
+            }
         }
 
         cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
@@ -407,27 +604,29 @@ void cercaRaggiungibili(TreeNode* node, ListNode** resultList, ListNode* partenz
 
 
 // funzione per la ricerca di tutti i nodi ragguibili da una stazione all'indietro
-void cercaRaggiungibiliIndietro(TreeNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* minimo, ListNode** nodoArrivo) {
+void cercaRaggiungibiliIndietro(RBNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* minimo, ListNode** nodoArrivo) {
     if (node == NULL || *trovato) {
         return;
     }
 
     if (node->stazione.distanza < partenza->stazione->distanza - autonomia) {
         cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
-    } else if (node->stazione.distanza >= *minimo) {
+    } else if (node->stazione.distanza >= partenza->stazione->distanza) {
         cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
     } else {
         cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
 
         if (node->stazione.distanza == arrivo){
             *trovato = 1;
-            *nodoArrivo = creaListNode(&(node->stazione), partenza);
+            *nodoArrivo = creaTreeNode(&(node->stazione), partenza);
             return;
         }
 
-        if (node->stazione.distanza >= partenza->stazione->distanza - autonomia && node->stazione.distanza < *minimo) {
+        if (node->stazione.distanza >= partenza->stazione->distanza - autonomia && node->stazione.distanza < partenza->stazione->distanza) {
             // inserisco solo i nodi che sono piu piccoli del primo elemento della lista, gli altri saranno già presenti
-            *resultList = inserisciInOrdine(*resultList, &(node->stazione), partenza);
+            if (node->stazione.distanza < *minimo){
+                inserisciInOrdine(resultList, &(node->stazione), partenza);
+            }
         }
 
         cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
@@ -436,25 +635,72 @@ void cercaRaggiungibiliIndietro(TreeNode* node, ListNode** resultList, ListNode*
 
 
 // funzione per trovare il nodo con distanza piu alta nella lista, usato nel percorso in avanti
-// migliorabile
 int trovaMassimo(ListNode* list){
-    int massimo = 0;
-    ListNode* curr = list;
-    while(curr != NULL){
-        if (curr->stazione->distanza > massimo){
-            massimo = curr->stazione->distanza;
-        }
-        curr = curr->next;
+    if (list == NULL) return 0;
+
+    ListNode * curr = list;
+    while (curr->right != NULL){
+        curr = curr->right;
     }
-    return massimo;
+
+    return curr->stazione->distanza;
 }
 
+ListNode* trovaMinimo(ListNode* root) {
+    if (root == NULL) {
+        // Se l'albero è vuoto, restituisce NULL
+        return NULL;
+    } else if (root->left == NULL) {
+        // Se non ci sono sottoalberi a sinistra, il nodo corrente è il minimo
+        return root;
+    } else {
+        // Altrimenti, continua a navigare verso sinistra per trovare il minimo
+        return trovaMinimo(root->left);
+    }
+}
+
+
+// Funzione per trovare l'elemento successivo in un BST dato un elemento presente nel BST
+ListNode* findSuccessor(ListNode* root, ListNode* element) {
+    if (root == NULL) {
+        return NULL; // L'albero è vuoto, non c'è un elemento successivo
+    }
+
+    // Trova il nodo con il valore dato all'interno dell'albero
+    ListNode* current = root;
+    ListNode * successor = NULL;
+
+    while (current != NULL && current->stazione->distanza != element->stazione->distanza) {
+        if (element->stazione->distanza < current->stazione->distanza) {
+            successor = current; // Il nodo corrente potrebbe essere il successore
+            current = current->left;
+        } else {
+            current = current->right;
+        }
+    }
+
+    if (current == NULL) {
+        return NULL; // L'elemento dato non è presente nell'albero
+    }
+
+    // Se il nodo ha un sottoalbero destro, trova il minimo in quel sottoalbero
+    if (current->right != NULL) {
+        return trovaMinimo(current->right);
+    } else {
+        // Altrimenti, l'elemento successivo sarà il primo nodo padre con valore maggiore
+        return successor;
+    }
+}
+
+
+
+
 // funzione che cerca il percorso minimo tra due stazioni in ordine crescente
-void cercaPercorso(TreeNode* root, int partenza, int arrivo){
+void cercaPercorso(RBNode* root, int partenza, int arrivo){
     int massimo = 0, trovato = 0;
 
-    TreeNode * partenzaTreeNode = searchNode(root, partenza);
-    ListNode * partenzaNode = creaListNode(&partenzaTreeNode->stazione, NULL);
+    RBNode * partenzaTreeNode = searchNode(root, partenza);
+    ListNode * partenzaNode = creaTreeNode(&partenzaTreeNode->stazione, NULL);
     ListNode* raggiungibili = NULL;
     ListNode* nodoArrivo = NULL;
 
@@ -469,8 +715,8 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
     // se trovo l'arrivo stampo il percorso e libero la memoria
     if (trovato){
         printf("%d %d\n", partenza, arrivo);
-        freeList(partenzaNode);
-        freeList(raggiungibili);
+        freeAlbero(partenzaNode);
+        freeAlbero(raggiungibili);
         return;
     }
 
@@ -486,14 +732,16 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
     ListList * curr = head;
 
     while(curr != NULL && !trovato){
-        ListNode * currNode = curr->list;
+        ListNode * currTree = curr->list;
         ListNode * nuoviRaggiungibili = NULL;
-        while(currNode != NULL && !trovato){
-            cercaRaggiungibili(root, &nuoviRaggiungibili, currNode, currNode->stazione->auto_max, &trovato, arrivo, &massimo, &nodoArrivo);
-            currNode = currNode->next;
+        ListNode * piuPiccolo = trovaMinimo(currTree);
+
+        while(piuPiccolo != NULL && !trovato){
+            cercaRaggiungibili(root, &nuoviRaggiungibili, piuPiccolo, piuPiccolo->stazione->auto_max, &trovato, arrivo, &massimo, &nodoArrivo);
+            piuPiccolo = findSuccessor(currTree, piuPiccolo);
         }
         if (nuoviRaggiungibili != NULL){
-            massimo = 0;
+            massimo = trovaMassimo(nuoviRaggiungibili);
             head = inserisciLista(head, nuoviRaggiungibili);
         }
         curr = curr->next;
@@ -522,17 +770,16 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
 
 
 // funzione che cerca il percorso minimo tra due stazioni in ordine decrescente
-void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
+void cercaPercorsoIndietro(RBNode* root, int partenza, int arrivo){
     int minimo = INT_MAX, trovato = 0;
 
-    TreeNode * partenzaTreeNode = searchNode(root, partenza);
-    ListNode * partenzaNode = creaListNode(&partenzaTreeNode->stazione, NULL);
+    RBNode * partenzaTreeNode = searchNode(root, partenza);
+    ListNode * partenzaNode = creaTreeNode(&partenzaTreeNode->stazione, NULL);
     ListNode* raggiungibili = NULL;
     ListNode* nodoArrivo = NULL;
 
     cercaRaggiungibiliIndietro(root, &raggiungibili, partenzaNode, partenzaTreeNode->stazione.auto_max, &trovato, arrivo, &minimo, &nodoArrivo);
     // in raggiungibili ho tutti i nodi raggiungibili da partenza in un bst
-
     // se non trovo nodi raggiungibili dalla partenza stampo nessun percorso
     if (raggiungibili == NULL){
         printf("nessun percorso\n");
@@ -542,8 +789,8 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
     // se trovo l'arrivo stampo il percorso e libero la memoria
     if (trovato){
         printf("%d %d\n", partenza, arrivo);
-        freeList(partenzaNode);
-        freeList(raggiungibili);
+        freeAlbero(partenzaNode);
+        freeAlbero(raggiungibili);
         return;
     }
 
@@ -555,20 +802,32 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
     // inserisco la prima lista dei raggiungibili
     head = inserisciLista(head, raggiungibili);
 
+    //printf("primo albero raggiungibilità\n");
+    //stampaAlbero(raggiungibili);
     // scorro la lista di liste
     ListList * curr = head;
     while(curr != NULL && !trovato){
-        ListNode * currNode = curr->list;
+        ListNode * currTree = curr->list;
         ListNode * nuoviRaggiungibili = NULL;
+        ListNode * piuPiccolo = trovaMinimo(currTree);
+
         // scorro la lista dei nodi raggiungibili
-        while(currNode != NULL && !trovato){
-            cercaRaggiungibiliIndietro(root, &nuoviRaggiungibili, currNode, currNode->stazione->auto_max, &trovato, arrivo, &minimo, &nodoArrivo);
-            currNode = currNode->next;
+        while(piuPiccolo != NULL && !trovato){
+            cercaRaggiungibiliIndietro(root, &nuoviRaggiungibili, piuPiccolo, piuPiccolo->stazione->auto_max, &trovato, arrivo, &minimo, &nodoArrivo);
+            //printf("nuovi raggiungibili\n");
+            //stampaAlbero(nuoviRaggiungibili);
+            //if (piuPiccolo != NULL) printf("piu piccolo %d\n", piuPiccolo->stazione->distanza); else printf("NULL\n");
+            piuPiccolo = findSuccessor(currTree, piuPiccolo);
+            //if (piuPiccolo != NULL) printf("piu piccolo %d\n", piuPiccolo->stazione->distanza); else printf("NULL\n");
+
         }
         if (nuoviRaggiungibili != NULL){
             minimo = nuoviRaggiungibili->stazione->distanza;
             head = inserisciLista(head, nuoviRaggiungibili);
+            //printf("minimo %d\n", minimo);
+            //stampaLista(head);
         }
+
         curr = curr->next;
     }
 
@@ -595,7 +854,7 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
 
 
 int main() {
-    TreeNode* root = NULL;
+    RBNode* root = NULL;
 
     char comando[20];
     int distanza, numero_auto, autonomia;
@@ -616,7 +875,7 @@ int main() {
             }
         } else if (strcmp(comando, "aggiungi-auto") == 0) {
             if (scanf("%d %d", &distanza, &autonomia) != EOF) {
-                TreeNode* stazione = searchNode(root, distanza);
+                RBNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     aggiungiAuto(stazione, autonomia);
                 } else {
@@ -625,7 +884,7 @@ int main() {
             }
         } else if (strcmp(comando, "rottama-auto") == 0) {
             if (scanf("%d %d", &distanza, &autonomia) != EOF) {
-                TreeNode* stazione = searchNode(root, distanza);
+                RBNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     rottamaAuto(stazione, autonomia);
                 } else {
