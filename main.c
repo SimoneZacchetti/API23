@@ -575,32 +575,33 @@ void rottamaAuto(RBNode* stazione, int autonomia) {
 
 // funzione per la ricerca di tutti i nodi ragguibili da una stazione in avanti
 void cercaRaggiungibili(RBNode* node, ListNode** resultList, ListNode* partenza, int autonomia, int* trovato, int arrivo, int* massimo, ListNode** nodoArrivo) {
-    if (node == NULL || *trovato) {
+    if (node == NULL || *trovato){
         return;
     }
 
-    if (node->stazione.distanza > partenza->stazione->distanza + autonomia) {
-        cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
-    } else if (node->stazione.distanza < partenza->stazione->distanza) {
+    if (node->stazione.distanza <= *massimo) {
         cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
-    } else {
+    } else if (node->stazione.distanza > partenza->stazione->distanza + partenza->stazione->auto_max){
         cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
-
-        if (node->stazione.distanza == arrivo){
-            *trovato = 1;
-            *nodoArrivo = creaTreeNode(&(node->stazione), partenza);
-            return;
-        }
-
+    } else {
         if (node->stazione.distanza <= partenza->stazione->distanza + autonomia && node->stazione.distanza > partenza->stazione->distanza) {
+            if (node->stazione.distanza == arrivo){
+                *trovato = 1;
+                *nodoArrivo = creaTreeNode(&(node->stazione), partenza);
+                return;
+            }
             if (node->stazione.distanza > *massimo){
+                if (*massimo < partenza->stazione->distanza){
+                    *massimo = partenza->stazione->distanza;
+                }
                 inserisciInOrdine(resultList, &(node->stazione), partenza);
             }
         }
-
+        cercaRaggiungibili(node->left, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
         cercaRaggiungibili(node->right, resultList, partenza, autonomia, trovato, arrivo, massimo, nodoArrivo);
     }
 }
+
 
 
 // funzione per la ricerca di tutti i nodi ragguibili da una stazione all'indietro
@@ -609,28 +610,28 @@ void cercaRaggiungibiliIndietro(RBNode* node, ListNode** resultList, ListNode* p
         return;
     }
 
-    if (node->stazione.distanza < partenza->stazione->distanza - autonomia) {
+    if (node->stazione.distanza >= *minimo) {
+        cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
+    } else if (node->stazione.distanza < partenza->stazione->distanza - partenza->stazione->auto_max){
         cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
-    } else if (node->stazione.distanza >= partenza->stazione->distanza) {
-        cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
     } else {
-        cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
-
-        if (node->stazione.distanza == arrivo){
-            *trovato = 1;
-            *nodoArrivo = creaTreeNode(&(node->stazione), partenza);
-            return;
-        }
-
         if (node->stazione.distanza >= partenza->stazione->distanza - autonomia && node->stazione.distanza < partenza->stazione->distanza) {
-            // inserisco solo i nodi che sono piu piccoli del primo elemento della lista, gli altri saranno già presenti
+            if (node->stazione.distanza == arrivo){
+                *trovato = 1;
+                *nodoArrivo = creaTreeNode(&(node->stazione), partenza);
+                return;
+            }
             if (node->stazione.distanza < *minimo){
+                if (*minimo > partenza->stazione->distanza){
+                    *minimo = partenza->stazione->distanza;
+                }
                 inserisciInOrdine(resultList, &(node->stazione), partenza);
             }
         }
-
+        cercaRaggiungibiliIndietro(node->left, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
         cercaRaggiungibiliIndietro(node->right, resultList, partenza, autonomia, trovato, arrivo, minimo, nodoArrivo);
     }
+
 }
 
 
@@ -704,7 +705,8 @@ void cercaPercorso(RBNode* root, int partenza, int arrivo){
     ListNode* raggiungibili = NULL;
     ListNode* nodoArrivo = NULL;
 
-    cercaRaggiungibili(root, &raggiungibili, partenzaNode, partenzaTreeNode->stazione.auto_max, &trovato, arrivo, &massimo, &nodoArrivo);
+    cercaRaggiungibili(root, &raggiungibili, partenzaNode, partenzaTreeNode->stazione.auto_max, &trovato,
+                       arrivo, &massimo, &nodoArrivo);
 
     // se non trovo nodi raggiungibili dalla partenza stampo nessun percorso
     if (raggiungibili == NULL){
@@ -855,26 +857,27 @@ void cercaPercorsoIndietro(RBNode* root, int partenza, int arrivo){
 
 int main() {
     RBNode* root = NULL;
+    FILE* file = stdin;
 
     char comando[20];
     int distanza, numero_auto, autonomia;
     int partenza, arrivo;
     int autonomie[MAX_AUTO];
 
-    while (scanf("%s", comando) != EOF) {
+    while ((fscanf(file, "%s", comando) != EOF)) {
         if (strcmp(comando, "aggiungi-stazione") == 0) {
-            if (scanf("%d %d", &distanza, &numero_auto) != EOF) {
+            if(fscanf (file, "%d %d", &distanza, &numero_auto) != EOF) {
                 for (int i = 0; i < numero_auto; i++) {
-                    if (scanf("%d", &autonomie[i]) != EOF){}
+                    if(fscanf(file, "%d", &autonomie [i]) != EOF){}
                 }
                 aggiungiStazione(&root, distanza, numero_auto, autonomie);
             }
         } else if (strcmp(comando, "demolisci-stazione") == 0) {
-            if (scanf("%d", &distanza) != EOF) {
+            if (fscanf(file, "%d", &distanza) != EOF) {
                 root = deleteNode(root, distanza);
             }
         } else if (strcmp(comando, "aggiungi-auto") == 0) {
-            if (scanf("%d %d", &distanza, &autonomia) != EOF) {
+            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
                 RBNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     aggiungiAuto(stazione, autonomia);
@@ -883,7 +886,7 @@ int main() {
                 }
             }
         } else if (strcmp(comando, "rottama-auto") == 0) {
-            if (scanf("%d %d", &distanza, &autonomia) != EOF) {
+            if (fscanf(file, "%d %d", &distanza, &autonomia) != EOF) {
                 RBNode* stazione = searchNode(root, distanza);
                 if (stazione != NULL) {
                     rottamaAuto(stazione, autonomia);
@@ -892,7 +895,7 @@ int main() {
                 }
             }
         } else if (strcmp(comando, "pianifica-percorso") == 0) {
-            if (scanf("%d %d", &partenza, &arrivo) != EOF) {
+            if (fscanf(file, "%d %d", &partenza, &arrivo) != EOF) {
                 if (partenza == arrivo) {
                     printf("%d\n", partenza);
                     continue;
