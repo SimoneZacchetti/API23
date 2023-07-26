@@ -358,7 +358,7 @@ int contaStazioni(struct TreeNode* root, int low, int high) {
 }
 
 // Funzione ricorsiva per popolare l'array NodoArray in ordine crescente
-void populateArrayAvanti(struct TreeNode* root, int low, int high, NodoArray** arr, int* index) {
+void populateArrayAvanti(struct TreeNode* root, int low, int high, NodoArray* arr, int* index) {
     if (root == NULL) {
         return;
     }
@@ -367,9 +367,8 @@ void populateArrayAvanti(struct TreeNode* root, int low, int high, NodoArray** a
     populateArrayAvanti(root->left, low, high, arr, index);
 
     if (root->stazione.distanza >= low && root->stazione.distanza <= high) {
-        arr[*index] = (NodoArray*)malloc(sizeof(NodoArray));
-        arr[*index]->stazione = root->stazione;
-        arr[*index]->padre = NULL;
+        arr[*index].stazione = root->stazione;
+        arr[*index].padre = NULL;
         (*index)++;
     }
 
@@ -377,7 +376,7 @@ void populateArrayAvanti(struct TreeNode* root, int low, int high, NodoArray** a
 }
 
 // Funzione ricorsiva per popolare l'array NodoArray in ordine decrescente
-void populateArrayIndietro(struct TreeNode* root, int low, int high, NodoArray** arr, int* index) {
+void populateArrayIndietro(struct TreeNode* root, int low, int high, NodoArray arr[], int* index) {
     if (root == NULL) {
         return;
     }
@@ -386,14 +385,14 @@ void populateArrayIndietro(struct TreeNode* root, int low, int high, NodoArray**
     populateArrayIndietro(root->right, low, high, arr, index);
 
     if (root->stazione.distanza >= low && root->stazione.distanza <= high) {
-        arr[*index] = (NodoArray*)malloc(sizeof(NodoArray));
-        arr[*index]->stazione = root->stazione;
-        arr[*index]->padre = NULL;
+        arr[*index].stazione = root->stazione;
+        arr[*index].padre = NULL;
         (*index)++;
     }
 
     populateArrayIndietro(root->left, low, high, arr, index);
 }
+
 
 // Funzione per liberare l'array di tipo NodoArray
 void freeArray(NodoArray** arr, int size) {
@@ -405,7 +404,7 @@ void freeArray(NodoArray** arr, int size) {
 
 // Funzione di ricerca binaria per trovare l'indice del valore minore a quello cercato (se il valore cercato non è presente)
 // restituisce -1 se il target è minore del primo elemento
-int binarySearch(NodoArray** arr, int low, int high, int target) {
+int binarySearch(NodoArray* arr, int low, int high, int target) {
     int left = low;
     int right = high;
     int result = -1;
@@ -413,12 +412,12 @@ int binarySearch(NodoArray** arr, int low, int high, int target) {
     while (left <= right) {
         int mid = left + (right - left) / 2;
 
-        if (arr[mid]->stazione.distanza == target) {
+        if (arr[mid].stazione.distanza == target) {
             // Abbiamo trovato l'elemento target, salviamo l'indice e continuiamo la ricerca a sinistra per trovare il primo elemento uguale a target.
             result = mid;
             right = mid - 1;
             return result;
-        } else if (arr[mid]->stazione.distanza > target) {
+        } else if (arr[mid].stazione.distanza > target) {
             // L'elemento al centro è maggiore di target, quindi dobbiamo cercare a sinistra.
             right = mid - 1;
         } else {
@@ -461,24 +460,26 @@ int binarySearchDecrescente(NodoArray** arr, int low, int high, int target) {
 }
 
 // Funzione per cercare i nodi raggiungibili nel percorso all'indietro
-void cercaRaggiungiliIndietro(NodoArray** nodeArray, int numeroNodi, int indice, int* indiceMinStazioneRaggiungibile, int* trovato, int arrivo, ListNode** indici){
-    int partenza = nodeArray[indice]->stazione.distanza;
-    int autonomia = nodeArray[indice]->stazione.auto_max;
+void cercaRaggiungiliIndietro(NodoArray nodeArray[], int numeroNodi, int indice, int* indiceMinStazioneRaggiungibile, int* trovato, int arrivo, ListNode** indici) {
+    int partenza = nodeArray[indice].stazione.distanza;
+    int autonomia = nodeArray[indice].stazione.auto_max;
 
     // parto da indice+1 perché non considero l'elemento da cui parto
     // itero finchè la distanza di un nodo è maggiore della distanza di partenza - autonomia
-    for(int i=indice+1; nodeArray[i]->stazione.distanza >= partenza - autonomia && i<numeroNodi; i++){
-        if (nodeArray[i]->stazione.distanza == arrivo){
+    for (int i = indice + 1; nodeArray[i].stazione.distanza >= partenza - autonomia && i < numeroNodi; i++) {
+        if (nodeArray[i].stazione.distanza == arrivo) {
             // se trovo l'arrivo, creo un nodo bst e lo aggiungo alla lista di bst
             *trovato = 1;
-            nodeArray[i]->padre = nodeArray[indice];
+            nodeArray[i].padre = &nodeArray[indice];
             inserisciNodo(indici, i);
             return;
         }
 
-        inserisciNodo(indici, i);
-        if (nodeArray[i]->padre == NULL){
-            nodeArray[i]->padre = nodeArray[indice];
+        if (i > *indiceMinStazioneRaggiungibile){
+            inserisciNodo(indici, i);
+        }
+        if (nodeArray[i].padre == NULL) {
+            nodeArray[i].padre = &nodeArray[indice];
         }
         *indiceMinStazioneRaggiungibile = i;
     }
@@ -574,11 +575,12 @@ void rottamaAuto(TreeNode* stazione, int autonomia) {
 }
 
 // Funzione per trovare il percorso minimo tra due stazioni in avanti
-void cercaPercorso(TreeNode* root, int partenza, int arrivo){
+// Funzione per trovare il percorso minimo tra due stazioni in avanti
+void cercaPercorso(TreeNode* root, int partenza, int arrivo) {
     int numeroNodi = contaStazioni(root, partenza, arrivo);
 
     // Creo un array di tipo NodoArray delle dimensioni numeroNodi
-    NodoArray** nodeArray = (NodoArray**)malloc(numeroNodi * sizeof(NodoArray*));
+    NodoArray nodeArray[numeroNodi];
 
     // Popolo l'array con i nodi compresi tra partenza e arrivo in ordine crescente
     int i = 0;
@@ -586,37 +588,36 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
 
     // loop principale in cui scorro tutto l'array
     int indiceMaxStazioneRaggiungibile;
-    for (i=0; i<numeroNodi-1; i++){
-        indiceMaxStazioneRaggiungibile = binarySearch(nodeArray, 0, numeroNodi-1,
-                                                      nodeArray[i]->stazione.distanza + nodeArray[i]->stazione.auto_max);
+    for (i = 0; i < numeroNodi - 1; i++) {
+        indiceMaxStazioneRaggiungibile = binarySearch(nodeArray, 0, numeroNodi - 1,
+                                                      nodeArray[i].stazione.distanza + nodeArray[i].stazione.auto_max);
 
         //printf("max ragg %d\n", indiceMaxStazioneRaggiungibile);
-        if(indiceMaxStazioneRaggiungibile == i){ // se l'indice del massimo elemento raggiungibile è uguale a i significa che non posso raggiungere altri nodi
-            if(nodeArray[i+1]->padre == NULL){ // se il successivo non ha nessun padre mi fermo
+        if (indiceMaxStazioneRaggiungibile == i) { // se l'indice del massimo elemento raggiungibile è uguale a i significa che non posso raggiungere altri nodi
+            if (nodeArray[i + 1].padre == NULL) { // se il successivo non ha nessun padre mi fermo
                 printf("nessun percorso\n");
                 return;
             }
         }
 
-        if (indiceMaxStazioneRaggiungibile == numeroNodi - 1){ // se riesco ad arrivare all'ultimo nodo mi fermo
+        if (indiceMaxStazioneRaggiungibile == numeroNodi - 1) { // se riesco ad arrivare all'ultimo nodo mi fermo
             // metto nell'ultimo nodo il padre ed evito di farlo per quelli prima
-            nodeArray[numeroNodi - 1]->padre = nodeArray[i];
+            nodeArray[numeroNodi - 1].padre = &(nodeArray[i]);
             break;
         }
 
-        for (int j = indiceMaxStazioneRaggiungibile; j>0 || nodeArray[j]->padre != NULL; j--){
-            if (nodeArray[j]->padre == NULL){
-                nodeArray[j]->padre = nodeArray[i];
+        for (int j = indiceMaxStazioneRaggiungibile; j > 0 || nodeArray[j].padre != NULL; j--) {
+            if (nodeArray[j].padre == NULL) {
+                nodeArray[j].padre = &(nodeArray[i]);
             }
         }
 
     }
 
-
-    NodoArray* cur = nodeArray[numeroNodi-1];
+    NodoArray* cur = &(nodeArray[numeroNodi - 1]);
     NodePercorso* percorso = NULL;
     // costruisco la lista percorso risalendo con i padri
-    while (cur->padre != NULL){
+    while (cur->padre != NULL) {
         inserisciInTesta(&percorso, cur->stazione.distanza);
         cur = cur->padre;
     }
@@ -626,7 +627,7 @@ void cercaPercorso(TreeNode* root, int partenza, int arrivo){
     stampaListaPercorso(percorso);
     freeListPercorso(percorso);
 
-    freeArray(nodeArray, numeroNodi);
+    // Poiché ora utilizziamo un array invece di un puntatore a puntatore, non è necessario liberare la memoria allocata per l'array nodeArray.
 }
 
 // Funzione per trovare il percorso minimo tra due stazioni all'indietro
@@ -635,7 +636,7 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
     int numeroNodi = contaStazioni(root, arrivo, partenza);
 
     // Creo un array di tipo NodoArray delle dimensioni numeroNodi
-    NodoArray** nodeArray = (NodoArray**)malloc(numeroNodi * sizeof(NodoArray*));
+    NodoArray nodeArray[numeroNodi];
 
     // Popolo l'array con i nodi compresi tra partenza e arrivo in ordine decrescente
     int i = 0;
@@ -652,14 +653,14 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
     if (trovato == 1){
         printf("%d %d\n", partenza, arrivo);
         liberaAlberoIndici(indici);
-        freeArray(nodeArray, numeroNodi);
+        //freeArray(nodeArray, numeroNodi);
         return;
     }
 
     // se la lista di indici è vuota, non ho trovato nessun percorso
     if (indici == NULL){
         printf("nessun percorso\n");
-        freeArray(nodeArray, numeroNodi);
+        //freeArray(nodeArray, numeroNodi);
         return;
     }
 
@@ -688,23 +689,25 @@ void cercaPercorsoIndietro(TreeNode* root, int partenza, int arrivo){
     if (current == NULL){
         printf("nessun percorso\n");
         freeBstList(listaBst);
-        freeArray(nodeArray, numeroNodi);
+        //freeArray(nodeArray, numeroNodi);
         return;
     }
 
     if (trovato){
         // se ho trovato l'arrivo, risalgo con i padri e stampo il percorso
         NodePercorso* percorso = NULL;
-        NodoArray* cur = nodeArray[numeroNodi-1];
-        while (cur->padre != NULL){
+        NodoArray* cur = &nodeArray[numeroNodi - 1]; // Aggiornato il puntatore cur
+
+        while (cur->padre != NULL) {
             inserisciInTesta(&percorso, cur->stazione.distanza);
             cur = cur->padre;
         }
+
         inserisciInTesta(&percorso, cur->stazione.distanza);
         stampaListaPercorso(percorso);
         freeListPercorso(percorso);
-        freeArray(nodeArray, numeroNodi);
         freeBstList(listaBst);
+        //freeArray(nodeArray, numeroNodi);
     } else {
         printf("nessun percorso\n");
     }
