@@ -33,7 +33,7 @@ typedef struct NodoArray {
     struct NodoArray* padre;
 } NodoArray;
 
-// nodo di un albero per trovare il percorso minimo, con riferimento al padre, usato per il percorso all'indietro
+// nodo di un albero per trovare il percorso minimo, usato per il percorso all'indietro
 typedef struct ListNode {
     int indice;
     struct ListNode* right;
@@ -245,7 +245,7 @@ ListNode* search(ListNode* root, int indice) {
 }
 
 // Funzione per trovare l'elemento precedente dato un BST e un elemento contenuto in esso
-ListNode* findPredecessor(ListNode* root, int key) {
+ListNode*  findPredecessor(ListNode* root, int key) {
     ListNode* current = search(root, key);
     if (current == NULL)
         return NULL; // L'elemento non è presente nell'albero
@@ -320,16 +320,6 @@ void freeBstList(BstList* head) {
         current = current->next;
         liberaAlberoIndici(temp->bst); // Libera la memoria occupata dalla lista ListNode
         free(temp);
-    }
-}
-
-// funzione per stampare la lista di liste
-void stampaLista(BstList* head) {
-    BstList* current = head;
-    while (current != NULL) {
-        printf("albero: ");
-        liberaAlberoIndici(current->bst);
-        current = current->next;
     }
 }
 
@@ -432,33 +422,6 @@ int binarySearch(NodoArray** arr, int low, int high, int target) {
     return result;
 }
 
-// Funzione di ricerca binaria per trovare l'indice del valore minore a quello cercato (se il valore cercato non è presente)
-int binarySearchDecrescente(NodoArray** arr, int low, int high, int target) {
-    int left = low;
-    int right = high;
-    int result = -1;
-
-    while (left <= right) {
-        int mid = left + (right - left) / 2;
-
-        if (arr[mid]->stazione.distanza == target) {
-            // Abbiamo trovato l'elemento target, salviamo l'indice e continuiamo la ricerca a destra per trovare l'ultimo elemento uguale a target.
-            result = mid;
-            left = mid + 1;
-            return result;
-        } else if (arr[mid]->stazione.distanza > target) {
-            // L'elemento al centro è maggiore di target, quindi dobbiamo cercare a destra.
-            left = mid + 1;
-            // Aggiorniamo il risultato con l'indice dell'elemento più grande ma minore di target.
-            result = mid;
-        } else {
-            // L'elemento al centro è minore di target, quindi dobbiamo cercare a sinistra.
-            right = mid - 1;
-        }
-    }
-
-    return result;
-}
 
 // Funzione per cercare i nodi raggiungibili nel percorso all'indietro
 void cercaRaggiungiliIndietro(NodoArray** nodeArray, int numeroNodi, int indice, int* indiceMinStazioneRaggiungibile, int* trovato, int arrivo, ListNode** indici){
@@ -487,7 +450,7 @@ void cercaRaggiungiliIndietro(NodoArray** nodeArray, int numeroNodi, int indice,
     }
 }
 
-// trovo il l'inidice massimo del bst, in fondo a destra
+// trovo il l'indice massimo del bst, in fondo a destra
 ListNode* trovaIndiceMassimo(ListNode* root) {
     if (root == NULL) {
         // Se l'albero è vuoto, restituisce NULL
