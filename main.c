@@ -1,5 +1,4 @@
 // bst e array con nodi compresi tra partenza e arrivo
-// funziona ma lento nella malloc
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
